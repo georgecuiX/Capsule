@@ -235,6 +235,7 @@ temp_videos/
 transcripts/
 summaries/
 extracted_audio/
+temp_audio/
 
 # Model files and caches
 models/

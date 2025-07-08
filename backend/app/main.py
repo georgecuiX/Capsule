@@ -67,8 +67,6 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
     
     # Check file size (limit to 500MB as per env config)
     max_size = int(os.getenv("MAX_UPLOAD_SIZE", "500")) * 1024 * 1024  # Convert MB to bytes
-    if file.size and file.size > max_size:
-        raise HTTPException(status_code=400, detail=f"File too large. Max size: {max_size // (1024*1024)}MB")
     
     try:
         # Create upload directory if it doesn't exist
@@ -81,27 +79,37 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         file_path = os.path.join(upload_dir, unique_filename)
         
-        # Save file to disk
-        with open(file_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
-        
-        # Get file info
+        # Read file content
+        content = await file.read()
         file_size = len(content)
         
+        # Check file size after reading
+        if file_size > max_size:
+            raise HTTPException(status_code=400, detail=f"File too large. Max size: {max_size // (1024*1024)}MB")
+        
+        # Save file to disk
+        with open(file_path, "wb") as buffer:
+            buffer.write(content)
+        
+        # Verify file was written
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=500, detail="Failed to save file to disk")
+        
         # Get video duration using moviepy
+        duration = None
         try:
-            import moviepy.editor as mp
-            with mp.VideoFileClip(file_path) as video_clip:
+            from moviepy.video.io.VideoFileClip import VideoFileClip
+            with VideoFileClip(file_path) as video_clip:
                 duration = video_clip.duration
-        except:
+        except Exception as e:
+            print(f"Warning: Could not get video duration: {e}")
             duration = None
         
         # Create video record
         video = Video(
             title=file.filename,
             filename=unique_filename,
-            file_path=file_path,
+            file_path=os.path.abspath(file_path),  # Use absolute path
             file_size=file_size,
             duration=duration,
             status="uploaded"
@@ -115,7 +123,8 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
             "video_id": video.id,
             "filename": unique_filename,
             "size": file_size,
-            "duration": duration
+            "duration": duration,
+            "file_path": video.file_path
         }
         
     except Exception as e:
@@ -174,6 +183,36 @@ def process_video_task(video_id: int, db: Session):
         print(f"Video {video_id} processed successfully: {result}")
     except Exception as e:
         print(f"Video {video_id} processing failed: {e}")
+
+# Debug endpoint
+@app.get("/api/videos/{video_id}/debug")
+def debug_video(video_id: int, db: Session = Depends(get_db)):
+    """Debug video file information"""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    return {
+        "video_id": video.id,
+        "title": video.title,
+        "filename": video.filename,
+        "file_path": video.file_path,
+        "file_exists": os.path.exists(video.file_path) if video.file_path else False,
+        "file_size": video.file_size,
+        "status": video.status
+    }
+
+@app.post("/api/videos/{video_id}/reset")
+def reset_video_status(video_id: int, db: Session = Depends(get_db)):
+    """Reset video status to uploaded for reprocessing"""
+    video = db.query(Video).filter(Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    
+    video.status = "uploaded"
+    db.commit()
+    
+    return {"message": f"Video {video_id} status reset to uploaded"}
 
 # Search endpoint
 @app.get("/api/search")

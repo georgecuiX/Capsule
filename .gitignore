@@ -1,0 +1,378 @@
+# Capsule Project .gitignore
+
+# ===================
+# Python Backend
+# ===================
+
+# Virtual environments
+backend/venv/
+backend/env/
+backend/.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# ===================
+# Frontend (Next.js)
+# ===================
+
+# Dependencies
+capsule-frontend/node_modules/
+capsule-frontend/npm-debug.log*
+capsule-frontend/yarn-debug.log*
+capsule-frontend/yarn-error.log*
+
+# Next.js
+capsule-frontend/.next/
+capsule-frontend/out/
+
+# Production build
+capsule-frontend/build/
+
+# Runtime data
+capsule-frontend/pids
+capsule-frontend/*.pid
+capsule-frontend/*.seed
+capsule-frontend/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+capsule-frontend/coverage/
+capsule-frontend/.nyc_output
+
+# Grunt intermediate storage
+capsule-frontend/.grunt
+
+# Bower dependency directory
+capsule-frontend/bower_components
+
+# node-waf configuration
+capsule-frontend/.lock-wscript
+
+# Compiled binary addons
+capsule-frontend/build/Release
+
+# Dependency directories
+capsule-frontend/jspm_packages/
+
+# TypeScript cache
+capsule-frontend/*.tsbuildinfo
+
+# Optional npm cache directory
+capsule-frontend/.npm
+
+# Optional eslint cache
+capsule-frontend/.eslintcache
+
+# Optional stylelint cache
+capsule-frontend/.stylelintcache
+
+# Microbundle cache
+capsule-frontend/.rpt2_cache/
+capsule-frontend/.rts2_cache_cjs/
+capsule-frontend/.rts2_cache_es/
+capsule-frontend/.rts2_cache_umd/
+
+# Optional REPL history
+capsule-frontend/.node_repl_history
+
+# Output of 'npm pack'
+capsule-frontend/*.tgz
+
+# Yarn Integrity file
+capsule-frontend/.yarn-integrity
+
+# dotenv environment variable files
+capsule-frontend/.env
+capsule-frontend/.env.development.local
+capsule-frontend/.env.test.local
+capsule-frontend/.env.production.local
+capsule-frontend/.env.local
+
+# parcel-bundler cache
+capsule-frontend/.cache
+capsule-frontend/.parcel-cache
+
+# Next.js build output
+capsule-frontend/.next
+
+# Nuxt.js build / generate output
+capsule-frontend/.nuxt
+capsule-frontend/dist
+
+# Gatsby files
+capsule-frontend/.cache/
+capsule-frontend/public
+
+# Storybook build outputs
+capsule-frontend/.out
+capsule-frontend/.storybook-out
+
+# Temporary folders
+capsule-frontend/tmp/
+capsule-frontend/temp/
+
+# ===================
+# Docker
+# ===================
+
+# Docker volumes (will be recreated)
+postgres_data/
+redis_data/
+
+# ===================
+# Media & Data Files
+# ===================
+
+# Uploaded videos
+uploads/
+media/
+videos/
+temp_videos/
+
+# Processed data
+transcripts/
+summaries/
+extracted_audio/
+
+# Model files and caches
+models/
+model_cache/
+transformers_cache/
+whisper_cache/
+
+# Generated thumbnails
+thumbnails/
+
+# ===================
+# Database
+# ===================
+
+# SQLite databases (if used for development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Database migrations (keep structure, ignore data)
+# Note: You'll want to keep migration files, just not data dumps
+*.dump
+*.sql.gz
+
+# ===================
+# Logs
+# ===================
+
+# Application logs
+logs/
+*.log
+
+# ===================
+# IDE & Editor
+# ===================
+
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# PyCharm
+.idea/
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ===================
+# OS Generated Files
+# ===================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ===================
+# Temporary Files
+# ===================
+
+# Temporary processing files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ===================
+# Configuration Files
+# ===================
+
+# Local configuration files
+config.local.json
+settings.local.json
+
+# API keys and secrets
+secrets.json
+.secrets
+
+# ===================
+# Testing
+# ===================
+
+# Test outputs
+test_outputs/
+test_videos/
+test_results/
+
+# ===================
+# Documentation
+# ===================
+
+# Generated docs
+docs/_build/
+docs/build/
+
+# ===================
+# Deployment
+# ===================
+
+# Deployment configs (keep templates, ignore actual configs)
+*.prod.env
+*.production.env
+docker-compose.prod.yml
+docker-compose.production.yml
+
+# ===================
+# Future Additions
+# ===================
+
+# Placeholder for future additions:
+# - Cloud storage credentials
+# - SSL certificates
+# - Monitoring configs
+# - Performance profiles

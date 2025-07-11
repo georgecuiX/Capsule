@@ -226,16 +226,21 @@ redis_data/
 # ===================
 
 # Uploaded videos
+backend/uploads/
+backend/app/uploads/
 uploads/
 media/
 videos/
+
+# Processed audio files (NEW - updated location)
+backend/app/temp_audio/
 temp_videos/
+extracted_audio/
+temp_audio/
 
 # Processed data
 transcripts/
 summaries/
-extracted_audio/
-temp_audio/
 
 # Model files and caches
 models/

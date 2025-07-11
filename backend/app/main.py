@@ -7,6 +7,7 @@ from app.database import engine
 from app.services import video_processor
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables
 load_dotenv()
@@ -132,6 +133,150 @@ async def upload_video(file: UploadFile = File(...), db: Session = Depends(get_d
         if 'file_path' in locals() and os.path.exists(file_path):
             os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
+@app.delete("/api/videos/{video_id}")
+def delete_video(video_id: int, db: Session = Depends(get_db)):
+    """Delete a video and all associated data"""
+    try:
+        # Get video from database
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        # Store file path before deleting from database
+        file_path = video.file_path
+        video_title = video.title
+        
+        # Check if video is currently being processed
+        if video.status == "processing":
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot delete video while it's being processed. Please wait for processing to complete."
+            )
+        
+        # Delete associated records in correct order (foreign key constraints)
+        from app.models import TranscriptSegment
+        
+        # Step 1: Delete quotes (no foreign key dependencies)
+        quotes_deleted = db.query(Quote).filter(Quote.video_id == video_id).delete()
+        print(f"Deleted {quotes_deleted} quotes")
+        
+        # Step 2: Delete summaries (no foreign key dependencies)
+        summaries_deleted = db.query(Summary).filter(Summary.video_id == video_id).delete()
+        print(f"Deleted {summaries_deleted} summaries")
+        
+        # Step 3: Find ALL transcripts for this video and delete their segments
+        transcripts = db.query(Transcript).filter(Transcript.video_id == video_id).all()
+        segments_deleted = 0
+        
+        print(f"Found {len(transcripts)} transcripts for video {video_id}")
+        
+        for transcript in transcripts:
+            print(f"Processing transcript ID: {transcript.id}")
+            
+            # Count segments before deletion for debugging
+            segment_count = db.query(TranscriptSegment).filter(TranscriptSegment.transcript_id == transcript.id).count()
+            print(f"Found {segment_count} segments for transcript {transcript.id}")
+            
+            # Delete segments for this transcript
+            deleted_count = db.query(TranscriptSegment).filter(TranscriptSegment.transcript_id == transcript.id).delete()
+            segments_deleted += deleted_count
+            print(f"Deleted {deleted_count} segments from transcript {transcript.id}")
+        
+        # Commit segment deletions before proceeding
+        db.commit()
+        print(f"Total segments deleted: {segments_deleted}")
+        
+        # Step 4: Delete transcripts AFTER all segments are gone
+        transcripts_deleted = db.query(Transcript).filter(Transcript.video_id == video_id).delete()
+        print(f"Deleted {transcripts_deleted} transcripts")
+        
+        # Delete the video record
+        db.delete(video)
+        db.commit()
+        
+        # Now delete the physical file
+        file_deleted = False
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                file_deleted = True
+                print(f"Successfully deleted file: {file_path}")
+            except OSError as e:
+                print(f"Warning: Could not delete file {file_path}: {e}")
+                # Don't raise an error here since the database record is already deleted
+        
+        return {
+            "message": f"Video '{video_title}' deleted successfully",
+            "video_id": video_id,
+            "file_deleted": file_deleted,
+            "records_deleted": {
+                "video": 1,
+                "transcripts": transcripts_deleted,
+                "segments": segments_deleted,
+                "summaries": summaries_deleted,
+                "quotes": quotes_deleted
+            }
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404, 400)
+        raise
+    except Exception as e:
+        # Rollback database changes on any error
+        db.rollback()
+        print(f"Error deleting video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete video: {str(e)}")
+
+@app.delete("/api/videos/{video_id}/file-only")
+def delete_video_file_only(video_id: int, db: Session = Depends(get_db)):
+    """Delete only the video file, keep database records"""
+    try:
+        # Get video from database
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
+        
+        file_path = video.file_path
+        
+        # Check if video is currently being processed
+        if video.status == "processing":
+            raise HTTPException(
+                status_code=400, 
+                detail="Cannot delete video file while it's being processed"
+            )
+        
+        # Delete the physical file
+        file_deleted = False
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+                file_deleted = True
+                print(f"Successfully deleted file: {file_path}")
+                
+                # Update video record to reflect file is gone
+                video.file_path = None
+                video.status = "file_deleted"
+                db.commit()
+                
+            except OSError as e:
+                print(f"Error deleting file {file_path}: {e}")
+                raise HTTPException(status_code=500, detail=f"Failed to delete file: {str(e)}")
+        else:
+            raise HTTPException(status_code=404, detail="Video file not found on disk")
+        
+        return {
+            "message": f"Video file deleted successfully, database records preserved",
+            "video_id": video_id,
+            "file_deleted": file_deleted
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting video file {video_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete video file: {str(e)}")
 
 # Transcript endpoints
 @app.get("/api/videos/{video_id}/transcript")

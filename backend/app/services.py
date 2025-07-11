@@ -4,6 +4,7 @@ from typing import List, Dict
 from sqlalchemy.orm import Session
 from app.models import Video, Transcript, TranscriptSegment, Summary, Quote
 from pathlib import Path
+import numpy as np
 
 # Try to import optional dependencies
 try:
@@ -30,15 +31,12 @@ except ImportError:
 
 class VideoProcessor:
     def __init__(self):
-        # Create temp directory for processing 
-        # The services.py file is in backend/app/, so we need to go up one level to get to backend/
+        # Create temp directory for processing in backend/app/temp_audio/
         current_file_dir = Path(__file__).parent  # This is backend/app/
-        backend_dir = current_file_dir.parent     # This is backend/
-        self.temp_dir = backend_dir / "temp_audio"
+        self.temp_dir = current_file_dir / "temp_audio"  # This is backend/app/temp_audio/
         self.temp_dir.mkdir(exist_ok=True)
         
         print(f"Services file location: {current_file_dir}")
-        print(f"Backend directory: {backend_dir}")
         print(f"Temp audio directory: {self.temp_dir.resolve()}")
         
         # Initialize models only if libraries are available
@@ -70,29 +68,30 @@ class VideoProcessor:
         if not os.path.exists(video_path):
             raise Exception(f"Video file not found: {video_path}")
         
-        # Change to backend directory to ensure consistent file creation
-        original_cwd = os.getcwd()
-        backend_dir = Path(__file__).parent.parent  # Go from app/ to backend/
-        os.chdir(backend_dir)
-        print(f"Changed to backend directory: {os.getcwd()}")
-        
         try:
-            # Use simple filename in current directory (backend/)
-            audio_filename = "temp_audio.wav"
-            print(f"Will create audio file: {audio_filename}")
+            # Create temp_audio directory if it doesn't exist
+            temp_audio_dir = Path(__file__).parent / "temp_audio"  # backend/app/temp_audio/
+            temp_audio_dir.mkdir(exist_ok=True)
+            print(f"Using temp audio directory: {temp_audio_dir.resolve()}")
             
-            # Remove existing file if it exists
-            if os.path.exists(audio_filename):
-                os.remove(audio_filename)
+            # Generate unique filename to avoid conflicts
+            import uuid
+            audio_filename = f"temp_audio_{uuid.uuid4().hex[:8]}.wav"
+            audio_path = temp_audio_dir / audio_filename
+            print(f"Will create audio file: {audio_path}")
+            
+            # Remove existing file if it exists (unlikely with UUID, but safe)
+            if audio_path.exists():
+                audio_path.unlink()
                 print("Removed existing audio file")
             
-            # Load video using relative path from backend directory
-            video_rel_path = os.path.relpath(os.path.join(original_cwd, video_path))
-            print(f"Video relative path: {video_rel_path}")
+            # Load video using absolute path
+            abs_video_path = os.path.abspath(video_path)
+            print(f"Video absolute path: {abs_video_path}")
             
             # Load video
             print("Loading video file...")
-            video = VideoFileClip(video_rel_path)
+            video = VideoFileClip(abs_video_path)
             print(f"Video loaded successfully. Duration: {video.duration} seconds")
             
             # Extract audio
@@ -104,10 +103,10 @@ class VideoProcessor:
             
             print(f"Audio track found. Duration: {audio.duration} seconds")
             
-            # Write audio file
-            print(f"Writing audio to: {audio_filename}")
+            # Write audio file to temp_audio directory
+            print(f"Writing audio to: {audio_path}")
             audio.write_audiofile(
-                audio_filename, 
+                str(audio_path), 
                 verbose=True,
                 logger='bar'
             )
@@ -115,15 +114,15 @@ class VideoProcessor:
             print("Audio write completed")
             
             # Verify file exists
-            if not os.path.exists(audio_filename):
-                # List all files in current directory
-                files = [f for f in os.listdir('.') if f.endswith('.wav')]
-                print(f"WAV files in directory: {files}")
-                raise Exception(f"Audio file not created: {audio_filename}")
+            if not audio_path.exists():
+                # List all files in temp_audio directory
+                files = [f.name for f in temp_audio_dir.glob('*.wav')]
+                print(f"WAV files in temp_audio directory: {files}")
+                raise Exception(f"Audio file not created: {audio_path}")
             
-            # Get absolute path for return
-            abs_audio_path = os.path.abspath(audio_filename)
-            file_size = os.path.getsize(abs_audio_path)
+            # Get file size and absolute path
+            file_size = audio_path.stat().st_size
+            abs_audio_path = str(audio_path.resolve())
             print(f"Audio file created successfully: {abs_audio_path}")
             print(f"File size: {file_size} bytes")
             
@@ -138,10 +137,6 @@ class VideoProcessor:
             import traceback
             traceback.print_exc()
             raise Exception(f"Failed to extract audio: {str(e)}")
-        finally:
-            # Always restore original working directory
-            os.chdir(original_cwd)
-            print(f"Restored working directory to: {os.getcwd()}")
     
     def transcribe_audio(self, audio_path: str) -> Dict:
         """Transcribe audio using Whisper"""
@@ -182,23 +177,51 @@ class VideoProcessor:
             print(f"Transcription failed: {e}")
             raise Exception(f"Failed to transcribe audio: {str(e)}")
     
+    def convert_numpy_types(self, value):
+        """Convert NumPy types to native Python types for database compatibility"""
+        if isinstance(value, (np.integer, np.floating)):
+            return float(value)
+        elif isinstance(value, np.ndarray):
+            return value.tolist()
+        elif isinstance(value, (np.bool_, bool)):
+            return bool(value)
+        return value
+    
     def create_transcript_segments(self, whisper_result: Dict, transcript_id: int, db: Session):
         """Create transcript segments from Whisper result"""
         segments = []
         
         for segment in whisper_result.get("segments", []):
+            # Convert NumPy types to native Python types
+            start_time = self.convert_numpy_types(segment["start"])
+            end_time = self.convert_numpy_types(segment["end"])
+            confidence = self.convert_numpy_types(segment.get("avg_logprob", 0.0))
+            
+            print(f"Creating segment: '{segment['text'][:50]}...' [{start_time:.2f} - {end_time:.2f}]")
+            
             db_segment = TranscriptSegment(
                 transcript_id=transcript_id,
                 text=segment["text"].strip(),
-                start_time=segment["start"],
-                end_time=segment["end"],
-                confidence=segment.get("avg_logprob", 0.0)
+                start_time=start_time,
+                end_time=end_time,
+                confidence=confidence
             )
             segments.append(db_segment)
         
-        db.add_all(segments)
-        db.commit()
+        # Add segments to database in batches to avoid large transactions
+        batch_size = 50
+        for i in range(0, len(segments), batch_size):
+            batch = segments[i:i + batch_size]
+            db.add_all(batch)
+            try:
+                db.commit()
+                print(f"Saved batch of {len(batch)} segments")
+            except Exception as e:
+                print(f"Failed to save segment batch: {e}")
+                db.rollback()
+                raise e
         
+        print(f"Successfully created {len(segments)} transcript segments")
         return segments
     
     def generate_summaries(self, full_text: str, video_id: int, db: Session):
@@ -394,6 +417,37 @@ class VideoProcessor:
             
             print(f"Video found: {video.title}, file_path: {video.file_path}")
             
+            # Check for existing transcripts and clean them up if reprocessing
+            existing_transcripts = db.query(Transcript).filter(Transcript.video_id == video_id).all()
+            if existing_transcripts:
+                print(f"Found {len(existing_transcripts)} existing transcripts. Cleaning up before reprocessing...")
+                
+                # Delete existing data in proper order
+                from app.models import TranscriptSegment
+                
+                # Delete segments first
+                total_segments_deleted = 0
+                for transcript in existing_transcripts:
+                    segments_deleted = db.query(TranscriptSegment).filter(TranscriptSegment.transcript_id == transcript.id).delete()
+                    total_segments_deleted += segments_deleted
+                    print(f"Deleted {segments_deleted} segments from transcript {transcript.id}")
+                
+                # Delete existing summaries
+                summaries_deleted = db.query(Summary).filter(Summary.video_id == video_id).delete()
+                print(f"Deleted {summaries_deleted} existing summaries")
+                
+                # Delete existing quotes
+                quotes_deleted = db.query(Quote).filter(Quote.video_id == video_id).delete()
+                print(f"Deleted {quotes_deleted} existing quotes")
+                
+                # Delete transcripts
+                transcripts_deleted = db.query(Transcript).filter(Transcript.video_id == video_id).delete()
+                print(f"Deleted {transcripts_deleted} existing transcripts")
+                
+                # Commit cleanup
+                db.commit()
+                print(f"Cleanup complete: removed {transcripts_deleted} transcripts, {total_segments_deleted} segments, {summaries_deleted} summaries, {quotes_deleted} quotes")
+            
             # Update status
             video.status = "processing"
             db.commit()
@@ -419,7 +473,7 @@ class VideoProcessor:
             db.add(transcript)
             db.commit()
             db.refresh(transcript)
-            print(f"Transcript saved with ID: {transcript.id}")
+            print(f"New transcript saved with ID: {transcript.id}")
             
             # Step 4: Create transcript segments
             print("Step 4: Creating transcript segments...")
@@ -461,7 +515,8 @@ class VideoProcessor:
                 "segments_count": len(segments),
                 "summaries_count": len(summaries),
                 "quotes_count": len(quotes),
-                "video_type": video.video_type
+                "video_type": video.video_type,
+                "reprocessed": len(existing_transcripts) > 0
             }
             
         except Exception as e:

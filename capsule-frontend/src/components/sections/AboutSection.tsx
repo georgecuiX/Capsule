@@ -44,7 +44,7 @@ const AboutSection: React.FC = () => {
             
             <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Capsule transforms how you interact with video content. Using advanced AI, 
-              we automatically transcribe, summarize, and analyze your videos, making them 
+              Capsule automatically transcribes, summarizes, and analyzes your videos, making them 
               searchable and actionable.
             </p>
           </div>

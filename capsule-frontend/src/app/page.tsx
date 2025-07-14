@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Navigation from '@/components/layout/Navigation';
+import Footer from '@/components/layout/Footer';
 import HeroSection from '@/components/sections/HeroSection';
 import UploadSection from '@/components/sections/UploadSection';
 import ManageSection from '@/components/sections/ManageSection';
@@ -21,6 +22,11 @@ export default function Home() {
           <HeroSection />
         </section>
 
+        {/* About Section - Right after Hero */}
+        <section id="about" className="min-h-screen">
+          <AboutSection />
+        </section>
+
         {/* Upload Section */}
         <section id="upload" className="min-h-screen">
           <UploadSection />
@@ -35,12 +41,10 @@ export default function Home() {
         <section id="analysis" className="min-h-screen">
           <AnalysisSection />
         </section>
-
-        {/* About Section */}
-        <section id="about" className="min-h-screen">
-          <AboutSection />
-        </section>
       </main>
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }

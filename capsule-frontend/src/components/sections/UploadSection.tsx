@@ -185,6 +185,18 @@ const UploadSection: React.FC = () => {
           message: 'Video is being processed. This may take a few minutes...'
         });
         
+        // Emit processing started event with more details
+        window.dispatchEvent(new CustomEvent('videoProcessingStarted', { detail: { videoId } }));
+        
+        // Emit multiple events to ensure all sections refresh
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('videoStatusChanged', { detail: { videoId, status: 'processing' } }));
+        }, 100);
+        
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('videoStatusChanged', { detail: { videoId, status: 'processing' } }));
+        }, 500);
+        
         // Check processing status periodically
         checkProcessingStatus(videoId);
       } else {
@@ -220,12 +232,16 @@ const UploadSection: React.FC = () => {
           
           // Emit completion event for manage section
           window.dispatchEvent(new CustomEvent('videoProcessingCompleted', { detail: { videoId } }));
+          window.dispatchEvent(new CustomEvent('videoStatusChanged', { detail: { videoId, status: 'completed' } }));
         } else if (video.status === 'failed') {
           setUploadProgress({
             progress: 100,
             status: 'error',
             message: 'Processing failed. Please try again.'
           });
+          
+          // Emit failure event
+          window.dispatchEvent(new CustomEvent('videoStatusChanged', { detail: { videoId, status: 'failed' } }));
         } else if (video.status === 'processing' || video.status === 'queued') {
           // Continue checking
           setTimeout(() => checkProcessingStatus(videoId), 3000);
@@ -254,23 +270,31 @@ const UploadSection: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 pt-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 pt-16 relative overflow-hidden">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:50px_50px] animate-pulse"></div>
+        <div className="absolute top-20 left-20 w-64 h-64 bg-emerald-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-teal-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-4000"></div>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="text-center space-y-8">
           
           {/* Header */}
           <div className="space-y-4">
             <div className="flex justify-center">
-              <div className="p-4 bg-green-600 rounded-2xl shadow-lg">
+              <div className="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/20">
                 <Upload className="h-12 w-12 text-white" />
               </div>
             </div>
             
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
               Upload Your Videos
             </h2>
             
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-emerald-100 max-w-2xl mx-auto">
               Drag and drop your videos or browse to upload. We support MP4, MOV, AVI, MKV, and WEBM files up to 500MB.
             </p>
           </div>
@@ -278,12 +302,12 @@ const UploadSection: React.FC = () => {
           {/* Upload Area */}
           <div className="space-y-6">
             <div
-              className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-300 ${
+              className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-300 backdrop-blur-md ${
                 isDragOver
-                  ? 'border-green-400 bg-green-50 scale-105'
+                  ? 'border-emerald-400 bg-emerald-500/20 scale-105 shadow-2xl shadow-emerald-500/25'
                   : selectedFile
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
+                  ? 'border-emerald-300 bg-emerald-500/10 shadow-xl shadow-emerald-500/10'
+                  : 'border-white/30 bg-white/5 hover:border-emerald-400 hover:bg-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/10'
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -355,7 +379,7 @@ const UploadSection: React.FC = () => {
 
             {/* Progress Bar */}
             {uploadProgress && (
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-200">
+              <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/10">
                 <div className="space-y-4">
                   
                   {/* Status Header */}
@@ -374,7 +398,7 @@ const UploadSection: React.FC = () => {
                         <AlertCircle className="h-6 w-6 text-red-600" />
                       )}
                       
-                      <span className="font-semibold text-gray-900">
+                      <span className="font-semibold text-white">
                         {uploadProgress.status === 'uploading' && 'Uploading'}
                         {uploadProgress.status === 'processing' && 'Processing'}
                         {uploadProgress.status === 'completed' && 'Completed'}
@@ -382,7 +406,7 @@ const UploadSection: React.FC = () => {
                       </span>
                     </div>
                     
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-emerald-200">
                       {uploadProgress.progress}%
                     </span>
                   </div>
@@ -406,10 +430,10 @@ const UploadSection: React.FC = () => {
                   {/* Status Message */}
                   <p className={`text-sm ${
                     uploadProgress.status === 'error'
-                      ? 'text-red-600'
+                      ? 'text-red-300'
                       : uploadProgress.status === 'completed'
-                      ? 'text-green-600'
-                      : 'text-gray-600'
+                      ? 'text-emerald-300'
+                      : 'text-white/80'
                   }`}>
                     {uploadProgress.message}
                   </p>
@@ -419,14 +443,14 @@ const UploadSection: React.FC = () => {
                     <div className="flex justify-center space-x-4 pt-2">
                       <button
                         onClick={() => document.getElementById('manage')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg flex items-center space-x-2"
                       >
                         <Play className="h-4 w-4" />
                         <span>View Results</span>
                       </button>
                       <button
                         onClick={resetUpload}
-                        className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                        className="bg-white/20 hover:bg-white/30 text-white px-6 py-2 rounded-lg font-medium transition-all backdrop-blur-sm border border-white/20"
                       >
                         Upload Another
                       </button>
@@ -449,23 +473,23 @@ const UploadSection: React.FC = () => {
           </div>
 
           {/* Support Info */}
-          <div className="bg-blue-50 rounded-2xl p-6 text-left">
-            <h3 className="font-semibold text-gray-900 mb-3">Supported Formats & Features</h3>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+          <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 text-left border border-white/10 shadow-xl">
+            <h3 className="font-semibold text-white mb-3">Supported Formats & Features</h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm text-emerald-200">
               <div>
-                <p className="font-medium text-gray-800 mb-1">Video Formats:</p>
+                <p className="font-medium text-white mb-1">Video Formats:</p>
                 <p>MP4, MOV, AVI, MKV, WEBM</p>
               </div>
               <div>
-                <p className="font-medium text-gray-800 mb-1">Max File Size:</p>
+                <p className="font-medium text-white mb-1">Max File Size:</p>
                 <p>500MB per video</p>
               </div>
               <div>
-                <p className="font-medium text-gray-800 mb-1">Processing Features:</p>
+                <p className="font-medium text-white mb-1">Processing Features:</p>
                 <p>AI transcription, smart summaries, key quotes</p>
               </div>
               <div>
-                <p className="font-medium text-gray-800 mb-1">Languages:</p>
+                <p className="font-medium text-white mb-1">Languages:</p>
                 <p>Multi-language support with auto-detection</p>
               </div>
             </div>

@@ -119,99 +119,99 @@ cython_debug/
 # ===================
 
 # Dependencies
-capsule-frontend/node_modules/
-capsule-frontend/npm-debug.log*
-capsule-frontend/yarn-debug.log*
-capsule-frontend/yarn-error.log*
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
 
 # Next.js
-capsule-frontend/.next/
-capsule-frontend/out/
+frontend/.next/
+frontend/out/
 
 # Production build
-capsule-frontend/build/
+frontend/build/
 
 # Runtime data
-capsule-frontend/pids
-capsule-frontend/*.pid
-capsule-frontend/*.seed
-capsule-frontend/*.pid.lock
+frontend/pids
+frontend/*.pid
+frontend/*.seed
+frontend/*.pid.lock
 
 # Coverage directory used by tools like istanbul
-capsule-frontend/coverage/
-capsule-frontend/.nyc_output
+frontend/coverage/
+frontend/.nyc_output
 
 # Grunt intermediate storage
-capsule-frontend/.grunt
+frontend/.grunt
 
 # Bower dependency directory
-capsule-frontend/bower_components
+frontend/bower_components
 
 # node-waf configuration
-capsule-frontend/.lock-wscript
+frontend/.lock-wscript
 
 # Compiled binary addons
-capsule-frontend/build/Release
+frontend/build/Release
 
 # Dependency directories
-capsule-frontend/jspm_packages/
+frontend/jspm_packages/
 
 # TypeScript cache
-capsule-frontend/*.tsbuildinfo
+frontend/*.tsbuildinfo
 
 # Optional npm cache directory
-capsule-frontend/.npm
+frontend/.npm
 
 # Optional eslint cache
-capsule-frontend/.eslintcache
+frontend/.eslintcache
 
 # Optional stylelint cache
-capsule-frontend/.stylelintcache
+frontend/.stylelintcache
 
 # Microbundle cache
-capsule-frontend/.rpt2_cache/
-capsule-frontend/.rts2_cache_cjs/
-capsule-frontend/.rts2_cache_es/
-capsule-frontend/.rts2_cache_umd/
+frontend/.rpt2_cache/
+frontend/.rts2_cache_cjs/
+frontend/.rts2_cache_es/
+frontend/.rts2_cache_umd/
 
 # Optional REPL history
-capsule-frontend/.node_repl_history
+frontend/.node_repl_history
 
 # Output of 'npm pack'
-capsule-frontend/*.tgz
+frontend/*.tgz
 
 # Yarn Integrity file
-capsule-frontend/.yarn-integrity
+frontend/.yarn-integrity
 
 # dotenv environment variable files
-capsule-frontend/.env
-capsule-frontend/.env.development.local
-capsule-frontend/.env.test.local
-capsule-frontend/.env.production.local
-capsule-frontend/.env.local
+frontend/.env
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/.env.local
 
 # parcel-bundler cache
-capsule-frontend/.cache
-capsule-frontend/.parcel-cache
+frontend/.cache
+frontend/.parcel-cache
 
 # Next.js build output
-capsule-frontend/.next
+frontend/.next
 
 # Nuxt.js build / generate output
-capsule-frontend/.nuxt
-capsule-frontend/dist
+frontend/.nuxt
+frontend/dist
 
 # Gatsby files
-capsule-frontend/.cache/
-capsule-frontend/public
+frontend/.cache/
+frontend/public
 
 # Storybook build outputs
-capsule-frontend/.out
-capsule-frontend/.storybook-out
+frontend/.out
+frontend/.storybook-out
 
 # Temporary folders
-capsule-frontend/tmp/
-capsule-frontend/temp/
+frontend/tmp/
+frontend/temp/
 
 # ===================
 # Docker
@@ -232,11 +232,15 @@ uploads/
 media/
 videos/
 
-# Processed audio files (NEW - updated location)
+# Processed audio files
 backend/app/temp_audio/
 temp_videos/
 extracted_audio/
 temp_audio/
+
+# YouTube download temporary files
+backend/app/temp_youtube/
+temp_youtube/
 
 # Processed data
 transcripts/

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FolderOpen, Grid3X3, List, Search, Filter, Trash2, Eye, Play, Clock, FileText, RefreshCw } from 'lucide-react';
+import { FolderOpen, Grid3X3, List, Search, Filter, Trash2, Eye, Play, Clock, FileText, RefreshCw, Youtube, Upload } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -13,6 +13,7 @@ interface Video {
   file_size: number;
   duration?: number;
   video_type?: string;
+  youtube_url?: string; // NEW: YouTube URL field
   status: string;
   created_at: string;
   updated_at: string;
@@ -24,7 +25,34 @@ const ManageSection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterSource, setFilterSource] = useState<string>('all'); // NEW: Source filter
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'size'>('newest');
+
+  // Check if video is from YouTube
+  const isYouTubeVideo = (video: Video): boolean => {
+    return !!(video.youtube_url && video.youtube_url.trim());
+  };
+
+  // Get source icon and label
+  const getSourceInfo = (video: Video) => {
+    if (isYouTubeVideo(video)) {
+      return {
+        icon: Youtube,
+        label: 'YouTube',
+        color: 'text-red-500',
+        bgColor: 'bg-red-500/20',
+        borderColor: 'border-red-500/30'
+      };
+    } else {
+      return {
+        icon: Upload,
+        label: 'Upload',
+        color: 'text-blue-500',
+        bgColor: 'bg-blue-500/20',
+        borderColor: 'border-blue-500/30'
+      };
+    }
+  };
 
   // Fetch all videos
   const fetchVideos = async () => {
@@ -137,6 +165,7 @@ const ManageSection: React.FC = () => {
       case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'queued': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      case 'downloading': return 'bg-orange-100 text-orange-800 border-orange-200'; // NEW: YouTube downloading status
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -146,8 +175,14 @@ const ManageSection: React.FC = () => {
     .filter(video => {
       const matchesSearch = video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            video.video_type?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterStatus === 'all' || video.status === filterStatus;
-      return matchesSearch && matchesFilter;
+      const matchesStatusFilter = filterStatus === 'all' || video.status === filterStatus;
+      
+      // NEW: Source filter
+      const matchesSourceFilter = filterSource === 'all' || 
+                                 (filterSource === 'youtube' && isYouTubeVideo(video)) ||
+                                 (filterSource === 'upload' && !isYouTubeVideo(video));
+      
+      return matchesSearch && matchesStatusFilter && matchesSourceFilter;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -203,7 +238,7 @@ const ManageSection: React.FC = () => {
   // Auto-refresh for processing videos (less frequent since we have intensive monitoring)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (videos.some(v => v.status === 'processing' || v.status === 'queued')) {
+      if (videos.some(v => v.status === 'processing' || v.status === 'queued' || v.status === 'downloading')) {
         fetchVideos();
       }
     }, 15000); // Reduced frequency since we have targeted monitoring
@@ -221,6 +256,10 @@ const ManageSection: React.FC = () => {
       </div>
     );
   }
+
+  // Calculate stats by source
+  const youtubeVideos = videos.filter(isYouTubeVideo);
+  const uploadedVideos = videos.filter(v => !isYouTubeVideo(v));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-950 via-violet-950 to-fuchsia-950 pt-16 relative">
@@ -275,6 +314,19 @@ const ManageSection: React.FC = () => {
             {/* Filters & Controls */}
             <div className="flex items-center space-x-4">
               
+              {/* Source Filter - NEW */}
+              <div className="flex items-center space-x-2">
+                <select
+                  value={filterSource}
+                  onChange={(e) => setFilterSource(e.target.value)}
+                  className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white backdrop-blur-sm"
+                >
+                  <option value="all" className="text-gray-900">All Sources</option>
+                  <option value="upload" className="text-gray-900">📁 Uploaded Files</option>
+                  <option value="youtube" className="text-gray-900">▶️ YouTube Videos</option>
+                </select>
+              </div>
+
               {/* Status Filter */}
               <div className="flex items-center space-x-2">
                 <Filter className="h-4 w-4 text-purple-300" />
@@ -285,6 +337,7 @@ const ManageSection: React.FC = () => {
                 >
                   <option value="all" className="text-gray-900">All Status</option>
                   <option value="uploaded" className="text-gray-900">Uploaded</option>
+                  <option value="downloading" className="text-gray-900">Downloading</option>
                   <option value="processing" className="text-gray-900">Processing</option>
                   <option value="completed" className="text-gray-900">Completed</option>
                   <option value="failed" className="text-gray-900">Failed</option>
@@ -331,8 +384,8 @@ const ManageSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Enhanced Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
             <div className="text-2xl font-bold text-white">{videos.length}</div>
             <div className="text-sm text-purple-300">Total Videos</div>
@@ -342,8 +395,18 @@ const ManageSection: React.FC = () => {
             <div className="text-sm text-purple-300">Processed</div>
           </div>
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
-            <div className="text-2xl font-bold text-blue-400">{videos.filter(v => v.status === 'processing' || v.status === 'queued').length}</div>
-            <div className="text-sm text-purple-300">Processing</div>
+            <div className="text-2xl font-bold text-blue-400">{uploadedVideos.length}</div>
+            <div className="text-sm text-purple-300 flex items-center">
+              <Upload className="h-3 w-3 mr-1" />
+              Uploaded
+            </div>
+          </div>
+          <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
+            <div className="text-2xl font-bold text-red-400">{youtubeVideos.length}</div>
+            <div className="text-sm text-purple-300 flex items-center">
+              <Youtube className="h-3 w-3 mr-1" />
+              YouTube
+            </div>
           </div>
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
             <div className="text-2xl font-bold text-fuchsia-400">
@@ -359,7 +422,7 @@ const ManageSection: React.FC = () => {
             <FolderOpen className="h-12 w-12 text-purple-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No Videos Found</h3>
             <p className="text-purple-300">
-              {searchTerm || filterStatus !== 'all' 
+              {searchTerm || filterStatus !== 'all' || filterSource !== 'all'
                 ? 'Try adjusting your search or filters.' 
                 : 'Upload your first video to get started.'}
             </p>
@@ -369,165 +432,193 @@ const ManageSection: React.FC = () => {
             ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
             : 'space-y-4'
           }>
-            {filteredAndSortedVideos.map((video) => (
-              <div
-                key={video.id}
-                className={`bg-black/30 backdrop-blur-md rounded-2xl shadow-xl border border-white/10 hover:shadow-2xl hover:border-white/20 transition-all duration-300 ${
-                  viewMode === 'list' ? 'p-4' : 'p-6'
-                }`}
-              >
-                {viewMode === 'grid' ? (
-                  /* Grid View */
-                  <div className="space-y-4">
-                    {/* Video Icon & Status */}
-                    <div className="flex items-center justify-between">
-                      <div className="p-3 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-xl backdrop-blur-sm border border-white/20">
-                        <FileText className="h-8 w-8 text-white" />
-                      </div>
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
-                        {video.status}
-                      </span>
-                    </div>
-
-                    {/* Video Info */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-2 truncate">
-                        {video.title}
-                      </h3>
-                      <div className="space-y-1 text-sm text-purple-300">
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-2" />
-                          {formatDuration(video.duration)}
+            {filteredAndSortedVideos.map((video) => {
+              const sourceInfo = getSourceInfo(video);
+              const SourceIcon = sourceInfo.icon;
+              
+              return (
+                <div
+                  key={video.id}
+                  className={`bg-black/30 backdrop-blur-md rounded-2xl shadow-xl border border-white/10 hover:shadow-2xl hover:border-white/20 transition-all duration-300 ${
+                    viewMode === 'list' ? 'p-4' : 'p-6'
+                  }`}
+                >
+                  {viewMode === 'grid' ? (
+                    /* Grid View */
+                    <div className="space-y-4">
+                      {/* Video Icon & Status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-3 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-xl backdrop-blur-sm border border-white/20">
+                            <FileText className="h-8 w-8 text-white" />
+                          </div>
+                          
+                          {/* Source Indicator */}
+                          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${sourceInfo.bgColor} ${sourceInfo.borderColor} border`}>
+                            <SourceIcon className={`h-3 w-3 ${sourceInfo.color}`} />
+                            <span className={sourceInfo.color}>{sourceInfo.label}</span>
+                          </div>
                         </div>
-                        <div>{formatFileSize(video.file_size)}</div>
-                        {video.video_type && (
-                          <div className="text-fuchsia-400 font-medium">{video.video_type}</div>
-                        )}
-                        <div className="text-xs">{new Date(video.created_at).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center space-x-2">
-                      {video.status === 'uploaded' && (
-                        <button
-                          onClick={() => processVideo(video.id)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
-                        >
-                          <Play className="h-4 w-4" />
-                          <span>Process</span>
-                        </button>
-                      )}
-                      {(video.status === 'processing' || video.status === 'queued') && (
-                        <div className="flex-1 bg-blue-600/20 text-blue-300 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-1 border border-blue-500/30">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-                          <span>{video.status === 'queued' ? 'Queued' : 'Processing...'}</span>
-                        </div>
-                      )}
-                      {video.status === 'completed' && (
-                        <button
-                          onClick={() => document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' })}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span>View</span>
-                        </button>
-                      )}
-                      {video.status === 'failed' && (
-                        <button
-                          onClick={() => processVideo(video.id)}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          <span>Retry</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteVideo(video.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* List View */
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-lg backdrop-blur-sm border border-white/20">
-                      <FileText className="h-6 w-6 text-white" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-3 mb-1">
-                        <h3 className="text-lg font-medium text-white truncate">
-                          {video.title}
-                        </h3>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
+                        
+                        <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
                           {video.status}
                         </span>
-                        {video.video_type && (
-                          <span className="px-2 py-1 text-xs font-medium bg-fuchsia-500/20 text-fuchsia-300 rounded-full border border-fuchsia-500/30">
-                            {video.video_type}
-                          </span>
-                        )}
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-purple-300">
-                        <span className="flex items-center">
-                          <Clock className="h-4 w-4 mr-1" />
-                          {formatDuration(video.duration)}
-                        </span>
-                        <span>{formatFileSize(video.file_size)}</span>
-                        <span>{new Date(video.created_at).toLocaleDateString()}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex items-center space-x-2">
-                      {video.status === 'uploaded' && (
-                        <button
-                          onClick={() => processVideo(video.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                        >
-                          <Play className="h-4 w-4" />
-                          <span>Process</span>
-                        </button>
-                      )}
-                      {(video.status === 'processing' || video.status === 'queued') && (
-                        <div className="bg-blue-600/20 text-blue-300 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 border border-blue-500/30">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
-                          <span>{video.status === 'queued' ? 'Queued' : 'Processing...'}</span>
+                      {/* Video Info */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-white mb-2 truncate">
+                          {video.title}
+                        </h3>
+                        <div className="space-y-1 text-sm text-purple-300">
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-2" />
+                            {formatDuration(video.duration)}
+                          </div>
+                          <div>{formatFileSize(video.file_size)}</div>
+                          {video.video_type && (
+                            <div className="text-fuchsia-400 font-medium">{video.video_type}</div>
+                          )}
+                          <div className="text-xs">{new Date(video.created_at).toLocaleDateString()}</div>
                         </div>
-                      )}
-                      {video.status === 'completed' && (
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center space-x-2">
+                        {video.status === 'uploaded' && (
+                          <button
+                            onClick={() => processVideo(video.id)}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>Process</span>
+                          </button>
+                        )}
+                        {(video.status === 'processing' || video.status === 'queued' || video.status === 'downloading') && (
+                          <div className="flex-1 bg-blue-600/20 text-blue-300 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-1 border border-blue-500/30">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                            <span>
+                              {video.status === 'queued' ? 'Queued' : 
+                               video.status === 'downloading' ? 'Downloading...' : 'Processing...'}
+                            </span>
+                          </div>
+                        )}
+                        {video.status === 'completed' && (
+                          <button
+                            onClick={() => document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span>View</span>
+                          </button>
+                        )}
+                        {video.status === 'failed' && (
+                          <button
+                            onClick={() => processVideo(video.id)}
+                            className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Retry</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' })}
-                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                          onClick={() => deleteVideo(video.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
+                          title="Delete Video"
                         >
-                          <Eye className="h-4 w-4" />
-                          <span>View</span>
+                          <Trash2 className="h-4 w-4" />
                         </button>
-                      )}
-                      {video.status === 'failed' && (
-                        <button
-                          onClick={() => processVideo(video.id)}
-                          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          <span>Retry</span>
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteVideo(video.id)}
-                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  ) : (
+                    /* List View */
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-lg backdrop-blur-sm border border-white/20">
+                          <FileText className="h-6 w-6 text-white" />
+                        </div>
+                        
+                        {/* Source Indicator */}
+                        <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${sourceInfo.bgColor} ${sourceInfo.borderColor} border`}>
+                          <SourceIcon className={`h-3 w-3 ${sourceInfo.color}`} />
+                          <span className={sourceInfo.color}>{sourceInfo.label}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h3 className="text-lg font-medium text-white truncate">
+                            {video.title}
+                          </h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
+                            {video.status}
+                          </span>
+                          {video.video_type && (
+                            <span className="px-2 py-1 text-xs font-medium bg-fuchsia-500/20 text-fuchsia-300 rounded-full border border-fuchsia-500/30">
+                              {video.video_type}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-4 text-sm text-purple-300">
+                          <span className="flex items-center">
+                            <Clock className="h-4 w-4 mr-1" />
+                            {formatDuration(video.duration)}
+                          </span>
+                          <span>{formatFileSize(video.file_size)}</span>
+                          <span>{new Date(video.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {video.status === 'uploaded' && (
+                          <button
+                            onClick={() => processVideo(video.id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                          >
+                            <Play className="h-4 w-4" />
+                            <span>Process</span>
+                          </button>
+                        )}
+                        {(video.status === 'processing' || video.status === 'queued' || video.status === 'downloading') && (
+                          <div className="bg-blue-600/20 text-blue-300 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 border border-blue-500/30">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
+                            <span>
+                              {video.status === 'queued' ? 'Queued' : 
+                               video.status === 'downloading' ? 'Downloading...' : 'Processing...'}
+                            </span>
+                          </div>
+                        )}
+                        {video.status === 'completed' && (
+                          <button
+                            onClick={() => document.getElementById('analysis')?.scrollIntoView({ behavior: 'smooth' })}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                          >
+                            <Eye className="h-4 w-4" />
+                            <span>View</span>
+                          </button>
+                        )}
+                        {video.status === 'failed' && (
+                          <button
+                            onClick={() => processVideo(video.id)}
+                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Retry</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteVideo(video.id)}
+                          className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

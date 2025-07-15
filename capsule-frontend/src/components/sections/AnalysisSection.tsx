@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { BarChart3, FileText, BookOpen, Quote, Search, Clock, RefreshCw } from 'lucide-react';
+import { BarChart3, FileText, BookOpen, Quote, Search, Clock, RefreshCw, Youtube, Upload, ExternalLink } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -12,6 +12,7 @@ interface Video {
   file_size: number;
   duration?: number;
   video_type?: string;
+  youtube_url?: string; // NEW: YouTube URL field
   status: string;
   created_at: string;
 }
@@ -60,6 +61,39 @@ const AnalysisSection: React.FC = () => {
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+
+  // Check if video is from YouTube
+  const isYouTubeVideo = (video: Video): boolean => {
+    return !!(video.youtube_url && video.youtube_url.trim());
+  };
+
+  // Get source info for a video
+  const getSourceInfo = (video: Video) => {
+    if (isYouTubeVideo(video)) {
+      return {
+        icon: Youtube,
+        label: 'YouTube',
+        color: 'text-red-500',
+        bgColor: 'bg-red-500/20',
+        borderColor: 'border-red-500/30'
+      };
+    } else {
+      return {
+        icon: Upload,
+        label: 'Uploaded File',
+        color: 'text-blue-500',
+        bgColor: 'bg-blue-500/20',
+        borderColor: 'border-blue-500/30'
+      };
+    }
+  };
+
+  // Open YouTube video in new tab
+  const openYouTubeVideo = (video: Video) => {
+    if (video.youtube_url) {
+      window.open(video.youtube_url, '_blank');
+    }
+  };
 
   // Fetch completed videos
   const fetchVideos = useCallback(async (showRefreshing = false) => {
@@ -249,7 +283,6 @@ const AnalysisSection: React.FC = () => {
     return () => clearInterval(interval);
   }, [videos.length, fetchVideos]);
 
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white pt-16">
@@ -260,6 +293,9 @@ const AnalysisSection: React.FC = () => {
       </div>
     );
   }
+
+  const youtubeVideos = videos.filter(isYouTubeVideo);
+  const uploadedVideos = videos.filter(v => !isYouTubeVideo(v));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-fuchsia-950 via-rose-950 to-pink-950 pt-16 relative overflow-hidden">
@@ -330,37 +366,91 @@ const AnalysisSection: React.FC = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Source Stats */}
+                <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-blue-500/20 border border-blue-500/30 rounded-lg p-2 text-center">
+                    <div className="font-bold text-blue-400">{uploadedVideos.length}</div>
+                    <div className="text-blue-300 flex items-center justify-center">
+                      <Upload className="h-3 w-3 mr-1" />
+                      Uploaded
+                    </div>
+                  </div>
+                  <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-2 text-center">
+                    <div className="font-bold text-red-400">{youtubeVideos.length}</div>
+                    <div className="text-red-300 flex items-center justify-center">
+                      <Youtube className="h-3 w-3 mr-1" />
+                      YouTube
+                    </div>
+                  </div>
+                </div>
                 
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {videos.map((video) => (
-                    <button
-                      key={video.id}
-                      onClick={() => selectVideo(video)}
-                      className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
-                        selectedVideo?.id === video.id
-                          ? 'border-rose-500 bg-rose-500/20 shadow-lg shadow-rose-500/25'
-                          : 'border-white/20 bg-white/5 hover:border-rose-400/50 hover:bg-white/10'
-                      }`}
-                    >
-                      <h4 className="font-medium text-white mb-2 truncate">
-                        {video.title}
-                      </h4>
-                      <div className="text-sm text-rose-200 space-y-1">
-                        <div className="flex items-center">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {formatDuration(video.duration)}
-                        </div>
-                        {video.video_type && (
-                          <div className="text-rose-400 font-medium">
-                            {video.video_type}
+                  {videos.map((video) => {
+                    const sourceInfo = getSourceInfo(video);
+                    const SourceIcon = sourceInfo.icon;
+                    
+                    return (
+                      <button
+                        key={video.id}
+                        onClick={() => selectVideo(video)}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                          selectedVideo?.id === video.id
+                            ? 'border-rose-500 bg-rose-500/20 shadow-lg shadow-rose-500/25'
+                            : 'border-white/20 bg-white/5 hover:border-rose-400/50 hover:bg-white/10'
+                        }`}
+                      >
+                        {/* Source indicator */}
+                        <div className="flex items-center justify-between mb-2">
+                          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${sourceInfo.bgColor} ${sourceInfo.borderColor} border`}>
+                            <SourceIcon className={`h-3 w-3 ${sourceInfo.color}`} />
+                            <span className={sourceInfo.color}>{sourceInfo.label === 'Uploaded File' ? 'Upload' : sourceInfo.label}</span>
                           </div>
-                        )}
-                        <div className="text-xs">
-                          {new Date(video.created_at).toLocaleDateString()}
+                          
+                          {/* YouTube link clickable span - NOT a button to avoid nesting */}
+                          {isYouTubeVideo(video) && (
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openYouTubeVideo(video);
+                              }}
+                              className="p-1 text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                              title="Open on YouTube"
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  openYouTubeVideo(video);
+                                }
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </span>
+                          )}
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                        
+                        <h4 className="font-medium text-white mb-2 truncate">
+                          {video.title}
+                        </h4>
+                        <div className="text-sm text-rose-200 space-y-1">
+                          <div className="flex items-center">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {formatDuration(video.duration)}
+                          </div>
+                          {video.video_type && (
+                            <div className="text-rose-400 font-medium">
+                              {video.video_type}
+                            </div>
+                          )}
+                          <div className="text-xs">
+                            {new Date(video.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -372,10 +462,38 @@ const AnalysisSection: React.FC = () => {
                   
                   {/* Selected Video Header */}
                   <div className="bg-black/20 backdrop-blur-md rounded-2xl border border-white/10 p-6 shadow-2xl">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-2xl font-bold text-white">
-                        {selectedVideo.title}
-                      </h3>
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          {(() => {
+                            const sourceInfo = getSourceInfo(selectedVideo);
+                            const SourceIcon = sourceInfo.icon;
+                            return (
+                              <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${sourceInfo.bgColor} ${sourceInfo.borderColor} border`}>
+                                <SourceIcon className={`h-4 w-4 ${sourceInfo.color}`} />
+                                <span className={sourceInfo.color}>{sourceInfo.label}</span>
+                              </div>
+                            );
+                          })()}
+                          
+                          {/* YouTube link for selected video */}
+                          {isYouTubeVideo(selectedVideo) && (
+                            <button
+                              onClick={() => openYouTubeVideo(selectedVideo)}
+                              className="flex items-center space-x-1 px-3 py-1 bg-red-500/20 border border-red-500/30 rounded-full text-sm font-medium text-red-300 hover:text-red-200 transition-colors"
+                              title="Open on YouTube"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              <span>View on YouTube</span>
+                            </button>
+                          )}
+                        </div>
+                        
+                        <h3 className="text-2xl font-bold text-white">
+                          {selectedVideo.title}
+                        </h3>
+                      </div>
+                      
                       <div className="flex items-center space-x-4 text-sm text-rose-200">
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />

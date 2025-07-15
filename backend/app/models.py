@@ -15,7 +15,7 @@ class Video(Base):
     file_size = Column(Integer)  # in bytes
     duration = Column(Float)  # in seconds
     video_type = Column(String)  # auto-tagged type (tutorial, review, etc.)
-    youtube_url = Column(String, nullable=True)
+    youtube_url = Column(String, nullable=True)  # Store original YouTube URL
     status = Column(String, default="uploading")  # uploading, processing, completed, failed
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

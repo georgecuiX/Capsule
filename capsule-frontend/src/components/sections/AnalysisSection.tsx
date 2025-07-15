@@ -254,7 +254,7 @@ const AnalysisSection: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white pt-16">
         <div className="text-center">
-          <BarChart3 className="animate-pulse h-8 w-8 mx-auto mb-4 text-orange-600" />
+          <BarChart3 className="animate-pulse h-8 w-8 mx-auto mb-4 text-rose-600" />
           <p className="text-gray-600">Loading analysis tools...</p>
         </div>
       </div>
@@ -262,18 +262,18 @@ const AnalysisSection: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-950 via-amber-950 to-yellow-950 pt-16 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-fuchsia-950 via-rose-950 to-pink-950 pt-16 relative overflow-hidden">
       {/* Mesh Gradient Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,120,0,0.1),transparent_50%),radial-gradient(ellipse_at_top_right,rgba(255,180,0,0.1),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(255,140,0,0.1),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,20,147,0.1),transparent_50%),radial-gradient(ellipse_at_top_right,rgba(255,105,180,0.1),transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(255,182,193,0.1),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_40%,rgba(255,255,255,0.02)_40%,rgba(255,255,255,0.02)_60%,transparent_60%)] bg-[length:60px_60px] animate-pulse"></div>
       </div>
       
       {/* Floating Orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-full blur-3xl animate-float"></div>
-        <div className="absolute top-3/4 right-1/4 w-64 h-64 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-full blur-3xl animate-float animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-3/4 w-32 h-32 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 rounded-full blur-2xl animate-float animation-delay-4000"></div>
+        <div className="absolute top-1/4 left-1/4 w-48 h-48 bg-gradient-to-r from-fuchsia-500/10 to-rose-500/10 rounded-full blur-3xl animate-float"></div>
+        <div className="absolute top-3/4 right-1/4 w-64 h-64 bg-gradient-to-r from-rose-500/10 to-pink-500/10 rounded-full blur-3xl animate-float animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-3/4 w-32 h-32 bg-gradient-to-r from-pink-500/10 to-fuchsia-500/10 rounded-full blur-2xl animate-float animation-delay-4000"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -281,7 +281,7 @@ const AnalysisSection: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="p-4 bg-gradient-to-r from-orange-600 to-amber-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10">
+            <div className="p-4 bg-gradient-to-r from-fuchsia-600 to-rose-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10">
               <BarChart3 className="h-12 w-12 text-white" />
             </div>
           </div>
@@ -290,16 +290,16 @@ const AnalysisSection: React.FC = () => {
             Analyze & Explore
           </h2>
           
-          <p className="text-xl text-orange-200 max-w-2xl mx-auto">
+          <p className="text-xl text-rose-200 max-w-2xl mx-auto">
             Dive deep into your video content with AI-powered transcripts, summaries, and insights.
           </p>
         </div>
 
         {videos.length === 0 ? (
           <div className="text-center py-12 bg-black/20 backdrop-blur-md rounded-2xl border border-white/10">
-            <FileText className="h-12 w-12 text-orange-400 mx-auto mb-4" />
+            <FileText className="h-12 w-12 text-rose-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No Processed Videos</h3>
-            <p className="text-orange-200">
+            <p className="text-rose-200">
               Process some videos first to analyze their content here.
             </p>
           </div>
@@ -315,15 +315,15 @@ const AnalysisSection: React.FC = () => {
                   </h3>
                   <div className="flex items-center space-x-2">
                     {refreshing && (
-                      <div className="flex items-center space-x-2 text-sm text-orange-400">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-400"></div>
+                      <div className="flex items-center space-x-2 text-sm text-rose-400">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-rose-400"></div>
                         <span>Updating...</span>
                       </div>
                     )}
                     <button
                       onClick={() => fetchVideos(true)}
                       disabled={refreshing}
-                      className="p-1 text-orange-400 hover:text-orange-300 transition-colors disabled:opacity-50"
+                      className="p-1 text-rose-400 hover:text-rose-300 transition-colors disabled:opacity-50"
                       title="Refresh videos"
                     >
                       <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -338,20 +338,20 @@ const AnalysisSection: React.FC = () => {
                       onClick={() => selectVideo(video)}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                         selectedVideo?.id === video.id
-                          ? 'border-orange-500 bg-orange-500/20 shadow-lg shadow-orange-500/25'
-                          : 'border-white/20 bg-white/5 hover:border-orange-400/50 hover:bg-white/10'
+                          ? 'border-rose-500 bg-rose-500/20 shadow-lg shadow-rose-500/25'
+                          : 'border-white/20 bg-white/5 hover:border-rose-400/50 hover:bg-white/10'
                       }`}
                     >
                       <h4 className="font-medium text-white mb-2 truncate">
                         {video.title}
                       </h4>
-                      <div className="text-sm text-orange-200 space-y-1">
+                      <div className="text-sm text-rose-200 space-y-1">
                         <div className="flex items-center">
                           <Clock className="h-3 w-3 mr-1" />
                           {formatDuration(video.duration)}
                         </div>
                         {video.video_type && (
-                          <div className="text-orange-400 font-medium">
+                          <div className="text-rose-400 font-medium">
                             {video.video_type}
                           </div>
                         )}
@@ -376,13 +376,13 @@ const AnalysisSection: React.FC = () => {
                       <h3 className="text-2xl font-bold text-white">
                         {selectedVideo.title}
                       </h3>
-                      <div className="flex items-center space-x-4 text-sm text-orange-200">
+                      <div className="flex items-center space-x-4 text-sm text-rose-200">
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
                           {formatDuration(selectedVideo.duration)}
                         </span>
                         {selectedVideo.video_type && (
-                          <span className="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-xs font-medium border border-orange-500/30">
+                          <span className="px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-xs font-medium border border-rose-500/30">
                             {selectedVideo.video_type}
                           </span>
                         )}
@@ -400,8 +400,8 @@ const AnalysisSection: React.FC = () => {
                             onClick={() => setViewMode(mode)}
                             className={`flex items-center space-x-2 px-4 py-2 rounded-xl border-2 transition-all backdrop-blur-sm ${
                               viewMode === mode
-                                ? 'border-orange-500 bg-orange-500/20 text-white shadow-lg shadow-orange-500/25'
-                                : 'border-white/20 text-orange-200 hover:border-orange-400/50 hover:bg-white/10'
+                                ? 'border-rose-500 bg-rose-500/20 text-white shadow-lg shadow-rose-500/25'
+                                : 'border-white/20 text-rose-200 hover:border-rose-400/50 hover:bg-white/10'
                             }`}
                           >
                             <Icon className="h-4 w-4" />
@@ -422,7 +422,7 @@ const AnalysisSection: React.FC = () => {
                           placeholder={`Search in ${viewMode}...`}
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                         />
                       </div>
                     </div>
@@ -432,7 +432,7 @@ const AnalysisSection: React.FC = () => {
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
                     {contentLoading ? (
                       <div className="p-12 text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600 mx-auto mb-4"></div>
                         <p className="text-gray-600">Loading content...</p>
                       </div>
                     ) : (

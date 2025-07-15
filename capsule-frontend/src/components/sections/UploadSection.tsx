@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from 'react';
-import { Upload, FileVideo, CheckCircle, AlertCircle, X, Play } from 'lucide-react';
+import { Upload, FileVideo, CheckCircle, AlertCircle, X, Play, Youtube, Link, Clock, Eye, Users } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -11,11 +11,35 @@ interface UploadProgress {
   message: string;
 }
 
+interface YouTubeInfo {
+  title: string;
+  duration: number;
+  uploader: string;
+  view_count: number;
+  thumbnail: string;
+  estimated_size: number;
+  estimated_size_mb: string;
+}
+
+interface YouTubeValidationResult {
+  valid: boolean;
+  info: YouTubeInfo;
+  warnings: string[];
+}
+
 const UploadSection: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'file' | 'youtube'>('file');
+  
+  // YouTube specific state
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [youtubeInfo, setYoutubeInfo] = useState<YouTubeInfo | null>(null);
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
+  const [urlError, setUrlError] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Validate file type and size
@@ -32,6 +56,55 @@ const UploadSection: React.FC = () => {
     }
 
     return null;
+  };
+
+  // Validate YouTube URL
+  const validateYouTubeUrl = async (url: string) => {
+    if (!url.trim()) {
+      setYoutubeInfo(null);
+      setUrlError(null);
+      return;
+    }
+
+    setIsValidatingUrl(true);
+    setUrlError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/youtube/validate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+
+      if (response.ok) {
+        const result: YouTubeValidationResult = await response.json();
+        setYoutubeInfo(result.info);
+        setUrlError(null);
+      } else {
+        const error = await response.json();
+        setUrlError(error.detail || 'Invalid YouTube URL');
+        setYoutubeInfo(null);
+      }
+    } catch {
+      setUrlError('Failed to validate URL. Please check your connection.');
+      setYoutubeInfo(null);
+    } finally {
+      setIsValidatingUrl(false);
+    }
+  };
+
+  // Handle YouTube URL input
+  const handleYouTubeUrlChange = (url: string) => {
+    setYoutubeUrl(url);
+    
+    // Debounce URL validation
+    const timeoutId = setTimeout(() => {
+      validateYouTubeUrl(url);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   };
 
   // Handle file selection
@@ -162,6 +235,104 @@ const UploadSection: React.FC = () => {
     }
   };
 
+  // Download YouTube video
+  const downloadYouTubeVideo = async () => {
+    if (!youtubeUrl.trim() || !youtubeInfo) return;
+
+    setIsUploading(true);
+    setUploadProgress({
+      progress: 0,
+      status: 'uploading',
+      message: 'Starting YouTube download...'
+    });
+
+    try {
+      const response = await fetch(`${API_BASE}/api/youtube/download`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: youtubeUrl.trim() }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setUploadProgress({
+          progress: 50,
+          status: 'processing',
+          message: 'Download started. Processing will begin automatically...'
+        });
+
+        // Emit upload event for manage section
+        window.dispatchEvent(new CustomEvent('videoUploaded', { detail: { videoId: result.video_id } }));
+
+        // Monitor download progress
+        monitorYouTubeProgress(result.video_id);
+      } else {
+        const error = await response.json();
+        setUploadProgress({
+          progress: 0,
+          status: 'error',
+          message: error.detail || 'YouTube download failed'
+        });
+      }
+    } catch {
+      setUploadProgress({
+        progress: 0,
+        status: 'error',
+        message: 'Network error during YouTube download'
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Monitor YouTube download progress
+  const monitorYouTubeProgress = async (videoId: number) => {
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/api/videos/${videoId}`);
+        if (response.ok) {
+          const video = await response.json();
+          
+          if (video.status === 'downloading') {
+            setUploadProgress({
+              progress: 25,
+              status: 'uploading',
+              message: 'Downloading from YouTube...'
+            });
+            setTimeout(checkStatus, 2000);
+          } else if (video.status === 'processing') {
+            setUploadProgress({
+              progress: 75,
+              status: 'processing',
+              message: 'Processing downloaded video...'
+            });
+            setTimeout(checkStatus, 3000);
+          } else if (video.status === 'completed') {
+            setUploadProgress({
+              progress: 100,
+              status: 'completed',
+              message: 'YouTube video processed successfully!'
+            });
+            
+            window.dispatchEvent(new CustomEvent('videoProcessingCompleted', { detail: { videoId } }));
+          } else if (video.status === 'failed') {
+            setUploadProgress({
+              progress: 0,
+              status: 'error',
+              message: 'YouTube video processing failed'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Status check error:', error);
+      }
+    };
+
+    setTimeout(checkStatus, 1000);
+  };
+
   // Start video processing
   const processVideo = async (videoId: number) => {
     try {
@@ -257,6 +428,9 @@ const UploadSection: React.FC = () => {
     setSelectedFile(null);
     setUploadProgress(null);
     setIsUploading(false);
+    setYoutubeUrl('');
+    setYoutubeInfo(null);
+    setUrlError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -269,14 +443,31 @@ const UploadSection: React.FC = () => {
     return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
   };
 
+  // Format duration
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Format view count
+  const formatViewCount = (count: number): string => {
+    if (count > 1000000) {
+      return `${(count / 1000000).toFixed(1)}M views`;
+    } else if (count > 1000) {
+      return `${(count / 1000).toFixed(1)}K views`;
+    }
+    return `${count} views`;
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-teal-900 to-cyan-900 pt-16 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-blue-950 to-purple-950 pt-16 relative overflow-hidden">
       {/* Animated Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:50px_50px] animate-pulse"></div>
-        <div className="absolute top-20 left-20 w-64 h-64 bg-emerald-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float"></div>
-        <div className="absolute bottom-20 right-20 w-80 h-80 bg-teal-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-4000"></div>
+        <div className="absolute top-20 left-20 w-64 h-64 bg-indigo-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float"></div>
+        <div className="absolute bottom-20 right-20 w-80 h-80 bg-blue-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-2000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-multiply filter blur-xl animate-float animation-delay-4000"></div>
       </div>
 
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -285,7 +476,7 @@ const UploadSection: React.FC = () => {
           {/* Header */}
           <div className="space-y-4">
             <div className="flex justify-center">
-              <div className="p-4 bg-gradient-to-r from-emerald-600 to-teal-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/20">
+              <div className="p-4 bg-gradient-to-r from-indigo-600 to-blue-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/20">
                 <Upload className="h-12 w-12 text-white" />
               </div>
             </div>
@@ -294,88 +485,206 @@ const UploadSection: React.FC = () => {
               Upload Your Videos
             </h2>
             
-            <p className="text-xl text-emerald-100 max-w-2xl mx-auto">
-              Drag and drop your videos or browse to upload. We support MP4, MOV, AVI, MKV, and WEBM files up to 500MB.
+            <p className="text-xl text-indigo-100 max-w-2xl mx-auto">
+              Upload video files or paste a YouTube URL to get started with AI-powered analysis.
             </p>
+          </div>
+
+          {/* Tab Selection */}
+          <div className="flex justify-center">
+            <div className="bg-black/20 backdrop-blur-md rounded-2xl p-2 border border-white/10">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setActiveTab('file')}
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                    activeTab === 'file'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <FileVideo className="h-5 w-5" />
+                  <span>Upload File</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('youtube')}
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all ${
+                    activeTab === 'youtube'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'text-indigo-200 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <Youtube className="h-5 w-5" />
+                  <span>YouTube URL</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Upload Area */}
           <div className="space-y-6">
-            <div
-              className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-300 backdrop-blur-md ${
-                isDragOver
-                  ? 'border-emerald-400 bg-emerald-500/20 scale-105 shadow-2xl shadow-emerald-500/25'
-                  : selectedFile
-                  ? 'border-emerald-300 bg-emerald-500/10 shadow-xl shadow-emerald-500/10'
-                  : 'border-white/30 bg-white/5 hover:border-emerald-400 hover:bg-emerald-500/10 hover:shadow-xl hover:shadow-emerald-500/10'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="video/*,.mp4,.mov,.avi,.mkv,.webm"
-                onChange={handleFileInputChange}
-                className="hidden"
-                disabled={isUploading}
-              />
+            {activeTab === 'file' ? (
+              /* File Upload */
+              <div
+                className={`relative border-2 border-dashed rounded-2xl p-12 transition-all duration-300 backdrop-blur-md ${
+                  isDragOver
+                    ? 'border-indigo-400 bg-indigo-500/20 scale-105 shadow-2xl shadow-indigo-500/25'
+                    : selectedFile
+                    ? 'border-indigo-300 bg-indigo-500/10 shadow-xl shadow-indigo-500/10'
+                    : 'border-white/30 bg-white/5 hover:border-indigo-400 hover:bg-indigo-500/10 hover:shadow-xl hover:shadow-indigo-500/10'
+                }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*,.mp4,.mov,.avi,.mkv,.webm"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                  disabled={isUploading}
+                />
 
-              {selectedFile ? (
-                /* Selected File Display */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-center space-x-4">
-                    <FileVideo className="h-12 w-12 text-green-600" />
-                    <div className="text-left">
-                      <p className="text-lg font-semibold text-gray-900">{selectedFile.name}</p>
-                      <p className="text-sm text-gray-600">{formatFileSize(selectedFile.size)}</p>
+                {selectedFile ? (
+                  /* Selected File Display */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center space-x-4">
+                      <FileVideo className="h-12 w-12 text-indigo-400" />
+                      <div className="text-left">
+                        <p className="text-lg font-semibold text-white">{selectedFile.name}</p>
+                        <p className="text-sm text-indigo-200">{formatFileSize(selectedFile.size)}</p>
+                      </div>
+                      <button
+                        onClick={resetUpload}
+                        className="p-2 text-indigo-300 hover:text-red-400 transition-colors"
+                        disabled={isUploading}
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
                     </div>
-                    <button
-                      onClick={resetUpload}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      disabled={isUploading}
-                    >
-                      <X className="h-6 w-6" />
-                    </button>
+                    
+                    {!uploadProgress && (
+                      <button
+                        onClick={uploadFile}
+                        disabled={isUploading}
+                        className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 mx-auto"
+                      >
+                        <Upload className="h-5 w-5" />
+                        <span>{isUploading ? 'Uploading...' : 'Upload & Process'}</span>
+                      </button>
+                    )}
                   </div>
-                  
-                  {!uploadProgress && (
+                ) : (
+                  /* Drop Zone */
+                  <div className="space-y-6">
+                    <FileVideo className={`h-16 w-16 mx-auto transition-colors ${
+                      isDragOver ? 'text-indigo-400' : 'text-indigo-300'
+                    }`} />
+                    
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium text-white">
+                        {isDragOver ? 'Drop your video here' : 'Drag and drop your video'}
+                      </p>
+                      <p className="text-indigo-200">or</p>
+                    </div>
+                    
                     <button
-                      onClick={uploadFile}
+                      onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 mx-auto"
+                      className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 mx-auto"
                     >
                       <Upload className="h-5 w-5" />
-                      <span>{isUploading ? 'Uploading...' : 'Upload & Process'}</span>
+                      <span>Browse Files</span>
                     </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* YouTube URL Input */
+              <div className="bg-black/20 backdrop-blur-md rounded-2xl p-8 border border-white/10 shadow-2xl">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center space-x-3 mb-6">
+                    <Youtube className="h-8 w-8 text-red-500" />
+                    <h3 className="text-xl font-semibold text-white">YouTube Video URL</h3>
+                  </div>
+
+                  {/* URL Input */}
+                  <div className="space-y-3">
+                    <div className="relative">
+                      <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-300 h-5 w-5" />
+                      <input
+                        type="url"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={youtubeUrl}
+                        onChange={(e) => handleYouTubeUrlChange(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-white placeholder-indigo-300 backdrop-blur-sm"
+                        disabled={isUploading}
+                      />
+                      {isValidatingUrl && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div>
+                        </div>
+                      )}
+                    </div>
+
+                    {urlError && (
+                      <div className="flex items-center space-x-2 text-red-400 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{urlError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* YouTube Video Preview */}
+                  {youtubeInfo && (
+                    <div className="bg-white/10 rounded-xl p-6 border border-white/20">
+                      <div className="flex space-x-4">
+                        {youtubeInfo.thumbnail && (
+                          <img 
+                            src={youtubeInfo.thumbnail} 
+                            alt="Video thumbnail"
+                            className="w-32 h-24 object-cover rounded-lg"
+                          />
+                        )}
+                        <div className="flex-1 space-y-2">
+                          <h4 className="font-semibold text-white text-lg leading-tight">
+                            {youtubeInfo.title}
+                          </h4>
+                          <div className="flex items-center space-x-4 text-sm text-indigo-200">
+                            <div className="flex items-center space-x-1">
+                              <Users className="h-4 w-4" />
+                              <span>{youtubeInfo.uploader}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-4 w-4" />
+                              <span>{formatDuration(youtubeInfo.duration)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Eye className="h-4 w-4" />
+                              <span>{formatViewCount(youtubeInfo.view_count)}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs text-indigo-300">
+                            Estimated size: ~{youtubeInfo.estimated_size_mb}
+                          </div>
+                        </div>
+                      </div>
+
+                      {!uploadProgress && (
+                        <button
+                          onClick={downloadYouTubeVideo}
+                          disabled={isUploading}
+                          className="w-full mt-4 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                        >
+                          <Youtube className="h-5 w-5" />
+                          <span>{isUploading ? 'Processing...' : 'Download & Process'}</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
-              ) : (
-                /* Drop Zone */
-                <div className="space-y-6">
-                  <FileVideo className={`h-16 w-16 mx-auto transition-colors ${
-                    isDragOver ? 'text-green-600' : 'text-gray-400'
-                  }`} />
-                  
-                  <div className="space-y-2">
-                    <p className="text-lg font-medium text-gray-900">
-                      {isDragOver ? 'Drop your video here' : 'Drag and drop your video'}
-                    </p>
-                    <p className="text-gray-600">or</p>
-                  </div>
-                  
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-xl font-semibold transition-colors flex items-center space-x-2 mx-auto"
-                  >
-                    <Upload className="h-5 w-5" />
-                    <span>Browse Files</span>
-                  </button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Progress Bar */}
             {uploadProgress && (
@@ -386,27 +695,27 @@ const UploadSection: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       {uploadProgress.status === 'uploading' && (
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-400"></div>
                       )}
                       {uploadProgress.status === 'processing' && (
                         <div className="animate-pulse rounded-full h-6 w-6 bg-blue-600"></div>
                       )}
                       {uploadProgress.status === 'completed' && (
-                        <CheckCircle className="h-6 w-6 text-green-600" />
+                        <CheckCircle className="h-6 w-6 text-indigo-400" />
                       )}
                       {uploadProgress.status === 'error' && (
-                        <AlertCircle className="h-6 w-6 text-red-600" />
+                        <AlertCircle className="h-6 w-6 text-red-400" />
                       )}
                       
                       <span className="font-semibold text-white">
-                        {uploadProgress.status === 'uploading' && 'Uploading'}
+                        {uploadProgress.status === 'uploading' && (activeTab === 'youtube' ? 'Downloading' : 'Uploading')}
                         {uploadProgress.status === 'processing' && 'Processing'}
                         {uploadProgress.status === 'completed' && 'Completed'}
                         {uploadProgress.status === 'error' && 'Error'}
                       </span>
                     </div>
                     
-                    <span className="text-sm text-emerald-200">
+                    <span className="text-sm text-indigo-200">
                       {uploadProgress.progress}%
                     </span>
                   </div>
@@ -418,10 +727,12 @@ const UploadSection: React.FC = () => {
                         uploadProgress.status === 'error'
                           ? 'bg-red-500'
                           : uploadProgress.status === 'completed'
-                          ? 'bg-green-500'
+                          ? 'bg-indigo-500'
                           : uploadProgress.status === 'processing'
                           ? 'bg-blue-500 animate-pulse'
-                          : 'bg-green-500'
+                          : activeTab === 'youtube'
+                          ? 'bg-red-500'
+                          : 'bg-indigo-500'
                       }`}
                       style={{ width: `${uploadProgress.progress}%` }}
                     ></div>
@@ -432,7 +743,7 @@ const UploadSection: React.FC = () => {
                     uploadProgress.status === 'error'
                       ? 'text-red-300'
                       : uploadProgress.status === 'completed'
-                      ? 'text-emerald-300'
+                      ? 'text-indigo-200'
                       : 'text-white/80'
                   }`}>
                     {uploadProgress.message}
@@ -443,7 +754,7 @@ const UploadSection: React.FC = () => {
                     <div className="flex justify-center space-x-4 pt-2">
                       <button
                         onClick={() => document.getElementById('manage')?.scrollIntoView({ behavior: 'smooth' })}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg flex items-center space-x-2"
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg flex items-center space-x-2"
                       >
                         <Play className="h-4 w-4" />
                         <span>View Results</span>
@@ -452,7 +763,7 @@ const UploadSection: React.FC = () => {
                         onClick={resetUpload}
                         className="bg-white/20 hover:bg-white/30 text-white px-6 py-2 rounded-lg font-medium transition-all backdrop-blur-sm border border-white/20"
                       >
-                        Upload Another
+                        {activeTab === 'youtube' ? 'Process Another' : 'Upload Another'}
                       </button>
                     </div>
                   )}
@@ -472,17 +783,17 @@ const UploadSection: React.FC = () => {
             )}
           </div>
 
-          {/* Support Info */}
-          <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 text-left border border-white/10 shadow-xl">
+          {/* Support Info - Added margin bottom for spacing */}
+          <div className="bg-black/20 backdrop-blur-md rounded-2xl p-6 text-left border border-white/10 shadow-xl mb-16">
             <h3 className="font-semibold text-white mb-3">Supported Formats & Features</h3>
-            <div className="grid md:grid-cols-2 gap-4 text-sm text-emerald-200">
+            <div className="grid md:grid-cols-2 gap-4 text-sm text-indigo-200">
               <div>
-                <p className="font-medium text-white mb-1">Video Formats:</p>
-                <p>MP4, MOV, AVI, MKV, WEBM</p>
+                <p className="font-medium text-white mb-1">Video Files:</p>
+                <p>MP4, MOV, AVI, MKV, WEBM (up to 500MB)</p>
               </div>
               <div>
-                <p className="font-medium text-white mb-1">Max File Size:</p>
-                <p>500MB per video</p>
+                <p className="font-medium text-white mb-1">YouTube Videos:</p>
+                <p>Any public video (up to 30 minutes)</p>
               </div>
               <div>
                 <p className="font-medium text-white mb-1">Processing Features:</p>

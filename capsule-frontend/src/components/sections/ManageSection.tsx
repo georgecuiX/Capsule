@@ -223,18 +223,18 @@ const ManageSection: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-zinc-900 pt-16 relative">
+    <div className="min-h-screen bg-gradient-to-br from-purple-950 via-violet-950 to-fuchsia-950 pt-16 relative">
       {/* Geometric Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
+      <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_35%,rgba(255,255,255,.1)_35%,rgba(255,255,255,.1)_65%,transparent_65%),linear-gradient(-45deg,transparent_35%,rgba(255,255,255,.1)_35%,rgba(255,255,255,.1)_65%,transparent_65%)] bg-[length:30px_30px]"></div>
       </div>
       
       {/* Floating Geometric Shapes */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-20 w-32 h-32 border border-purple-500/20 rotate-45 animate-spin-slow"></div>
-        <div className="absolute top-40 right-32 w-24 h-24 bg-purple-500/10 rotate-12 animate-float"></div>
-        <div className="absolute bottom-32 left-1/4 w-40 h-40 border-2 border-slate-500/20 rounded-full animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-28 h-28 bg-gradient-to-r from-purple-500/10 to-slate-500/10 rotate-45 animate-float animation-delay-2000"></div>
+        <div className="absolute top-40 right-32 w-24 h-24 bg-violet-500/10 rotate-12 animate-float"></div>
+        <div className="absolute bottom-32 left-1/4 w-40 h-40 border-2 border-fuchsia-500/20 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-20 right-20 w-28 h-28 bg-gradient-to-r from-purple-500/10 to-fuchsia-500/10 rotate-45 animate-float animation-delay-2000"></div>
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -242,7 +242,7 @@ const ManageSection: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="p-4 bg-gradient-to-r from-purple-600 to-slate-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10">
+            <div className="p-4 bg-gradient-to-r from-purple-600 to-fuchsia-600 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/10">
               <FolderOpen className="h-12 w-12 text-white" />
             </div>
           </div>
@@ -251,7 +251,7 @@ const ManageSection: React.FC = () => {
             Manage Your Library
           </h2>
           
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto">
+          <p className="text-xl text-purple-200 max-w-2xl mx-auto">
             Organize, search, and manage all your videos in one place. Monitor processing status and access your content.
           </p>
         </div>
@@ -262,13 +262,13 @@ const ManageSection: React.FC = () => {
             
             {/* Search */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-300 h-5 w-5" />
               <input
                 type="text"
                 placeholder="Search videos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-slate-400 backdrop-blur-sm"
+                className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-purple-300 backdrop-blur-sm"
               />
             </div>
 
@@ -277,7 +277,7 @@ const ManageSection: React.FC = () => {
               
               {/* Status Filter */}
               <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-slate-400" />
+                <Filter className="h-4 w-4 text-purple-300" />
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
@@ -307,13 +307,13 @@ const ManageSection: React.FC = () => {
               <div className="flex border border-white/20 rounded-lg overflow-hidden backdrop-blur-sm">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 transition-all ${viewMode === 'grid' ? 'bg-purple-600 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                  className={`p-2 transition-all ${viewMode === 'grid' ? 'bg-purple-600 text-white' : 'bg-white/10 text-purple-300 hover:bg-white/20'}`}
                 >
                   <Grid3X3 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 transition-all ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                  className={`p-2 transition-all ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white/10 text-purple-300 hover:bg-white/20'}`}
                 >
                   <List className="h-4 w-4" />
                 </button>
@@ -322,52 +322,7 @@ const ManageSection: React.FC = () => {
               {/* Refresh */}
               <button
                 onClick={fetchVideos}
-                className="p-2 text-slate-400 hover:text-purple-400 transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw className="h-5 w-5" />
-              </button> px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="all">All Status</option>
-                  <option value="uploaded">Uploaded</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
-                </select>
-              </div>
-
-              {/* Sort */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'name' | 'size')}
-                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="name">Name A-Z</option>
-                <option value="size">Largest First</option>
-              </select>
-
-              {/* View Mode */}
-              <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <Grid3X3 className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <List className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Refresh */}
-              <button
-                onClick={fetchVideos}
-                className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
+                className="p-2 text-purple-300 hover:text-purple-400 transition-colors"
                 title="Refresh"
               >
                 <RefreshCw className="h-5 w-5" />
@@ -380,30 +335,30 @@ const ManageSection: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
             <div className="text-2xl font-bold text-white">{videos.length}</div>
-            <div className="text-sm text-slate-400">Total Videos</div>
+            <div className="text-sm text-purple-300">Total Videos</div>
           </div>
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
             <div className="text-2xl font-bold text-green-400">{videos.filter(v => v.status === 'completed').length}</div>
-            <div className="text-sm text-slate-400">Processed</div>
+            <div className="text-sm text-purple-300">Processed</div>
           </div>
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
             <div className="text-2xl font-bold text-blue-400">{videos.filter(v => v.status === 'processing' || v.status === 'queued').length}</div>
-            <div className="text-sm text-slate-400">Processing</div>
+            <div className="text-sm text-purple-300">Processing</div>
           </div>
           <div className="bg-black/30 backdrop-blur-md rounded-xl p-4 shadow-xl border border-white/10">
-            <div className="text-2xl font-bold text-purple-400">
+            <div className="text-2xl font-bold text-fuchsia-400">
               {formatFileSize(videos.reduce((sum, v) => sum + (v.file_size || 0), 0))}
             </div>
-            <div className="text-sm text-slate-400">Total Size</div>
+            <div className="text-sm text-purple-300">Total Size</div>
           </div>
         </div>
 
         {/* Video Library */}
         {filteredAndSortedVideos.length === 0 ? (
           <div className="text-center py-12 bg-black/20 backdrop-blur-md rounded-2xl shadow-xl border border-white/10">
-            <FolderOpen className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+            <FolderOpen className="h-12 w-12 text-purple-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No Videos Found</h3>
-            <p className="text-slate-400">
+            <p className="text-purple-300">
               {searchTerm || filterStatus !== 'all' 
                 ? 'Try adjusting your search or filters.' 
                 : 'Upload your first video to get started.'}
@@ -426,7 +381,7 @@ const ManageSection: React.FC = () => {
                   <div className="space-y-4">
                     {/* Video Icon & Status */}
                     <div className="flex items-center justify-between">
-                      <div className="p-3 bg-gradient-to-r from-purple-600/80 to-slate-600/80 rounded-xl backdrop-blur-sm border border-white/20">
+                      <div className="p-3 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-xl backdrop-blur-sm border border-white/20">
                         <FileText className="h-8 w-8 text-white" />
                       </div>
                       <span className={`px-3 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
@@ -439,14 +394,14 @@ const ManageSection: React.FC = () => {
                       <h3 className="text-lg font-semibold text-white mb-2 truncate">
                         {video.title}
                       </h3>
-                      <div className="space-y-1 text-sm text-slate-400">
+                      <div className="space-y-1 text-sm text-purple-300">
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 mr-2" />
                           {formatDuration(video.duration)}
                         </div>
                         <div>{formatFileSize(video.file_size)}</div>
                         {video.video_type && (
-                          <div className="text-purple-400 font-medium">{video.video_type}</div>
+                          <div className="text-fuchsia-400 font-medium">{video.video_type}</div>
                         )}
                         <div className="text-xs">{new Date(video.created_at).toLocaleDateString()}</div>
                       </div>
@@ -464,8 +419,8 @@ const ManageSection: React.FC = () => {
                         </button>
                       )}
                       {(video.status === 'processing' || video.status === 'queued') && (
-                        <div className="flex-1 bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-1">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <div className="flex-1 bg-blue-600/20 text-blue-300 px-3 py-2 rounded-lg text-sm font-medium flex items-center justify-center space-x-1 border border-blue-500/30">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
                           <span>{video.status === 'queued' ? 'Queued' : 'Processing...'}</span>
                         </div>
                       )}
@@ -489,7 +444,7 @@ const ManageSection: React.FC = () => {
                       )}
                       <button
                         onClick={() => deleteVideo(video.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -499,25 +454,25 @@ const ManageSection: React.FC = () => {
                 ) : (
                   /* List View */
                   <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <FileText className="h-6 w-6 text-purple-600" />
+                    <div className="p-2 bg-gradient-to-r from-purple-600/80 to-fuchsia-600/80 rounded-lg backdrop-blur-sm border border-white/20">
+                      <FileText className="h-6 w-6 text-white" />
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-3 mb-1">
-                        <h3 className="text-lg font-medium text-gray-900 truncate">
+                        <h3 className="text-lg font-medium text-white truncate">
                           {video.title}
                         </h3>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(video.status)}`}>
                           {video.status}
                         </span>
                         {video.video_type && (
-                          <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                          <span className="px-2 py-1 text-xs font-medium bg-fuchsia-500/20 text-fuchsia-300 rounded-full border border-fuchsia-500/30">
                             {video.video_type}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex items-center space-x-4 text-sm text-purple-300">
                         <span className="flex items-center">
                           <Clock className="h-4 w-4 mr-1" />
                           {formatDuration(video.duration)}
@@ -538,8 +493,8 @@ const ManageSection: React.FC = () => {
                         </button>
                       )}
                       {(video.status === 'processing' || video.status === 'queued') && (
-                        <div className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <div className="bg-blue-600/20 text-blue-300 px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-1 border border-blue-500/30">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-400"></div>
                           <span>{video.status === 'queued' ? 'Queued' : 'Processing...'}</span>
                         </div>
                       )}
@@ -563,7 +518,7 @@ const ManageSection: React.FC = () => {
                       )}
                       <button
                         onClick={() => deleteVideo(video.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/30 hover:border-red-400"
                         title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />

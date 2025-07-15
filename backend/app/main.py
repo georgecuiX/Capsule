@@ -8,9 +8,14 @@ from app.services import video_processor
 import os
 from dotenv import load_dotenv
 from pathlib import Path
+from app.youtube_service import youtube_service
+from pydantic import BaseModel
+import re
 
 # Load environment variables
 load_dotenv()
+class YouTubeURLRequest(BaseModel):
+    url: str
 
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
@@ -366,3 +371,173 @@ def search_videos(q: str, db: Session = Depends(get_db)):
     # Basic search implementation - will be enhanced later
     videos = db.query(Video).filter(Video.title.contains(q)).all()
     return {"query": q, "results": videos}
+
+@app.post("/api/youtube/validate")
+async def validate_youtube_url(request: YouTubeURLRequest):
+    """Validate and get info for a YouTube URL"""
+    try:
+        # Validate URL format
+        if not youtube_service.validate_youtube_url(request.url):
+            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+        
+        # Get video information
+        info = youtube_service.get_video_info(request.url)
+        
+        # Check duration limit
+        max_duration = int(os.getenv("MAX_YOUTUBE_DURATION", "1800"))  # 30 minutes
+        if info['duration'] and info['duration'] > max_duration:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Video too long. Maximum duration: {max_duration//60} minutes"
+            )
+        
+        # Estimate file size warning
+        approx_size = info.get('filesize_approx', 0)
+        max_size = int(os.getenv("MAX_YOUTUBE_SIZE", "500")) * 1024 * 1024  # 500MB
+        
+        return {
+            "valid": True,
+            "info": {
+                "title": info['title'],
+                "duration": info['duration'],
+                "uploader": info['uploader'],
+                "view_count": info.get('view_count', 0),
+                "thumbnail": info.get('thumbnail', ''),
+                "estimated_size": approx_size,
+                "estimated_size_mb": round(approx_size / (1024 * 1024), 1) if approx_size else "Unknown"
+            },
+            "warnings": [
+                f"Estimated size: ~{round(approx_size / (1024 * 1024), 1)}MB" if approx_size else "Size unknown",
+                f"Duration: {info['duration']//60}:{info['duration']%60:02d}" if info['duration'] else "Duration unknown"
+            ] + ([f"Large file warning: Estimated size may exceed {max_size//(1024*1024)}MB limit"] if approx_size > max_size else [])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to validate URL: {str(e)}")
+
+@app.post("/api/youtube/download")
+async def download_youtube_video(request: YouTubeURLRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+    """Download a YouTube video and create a video record"""
+    try:
+        # Validate URL first
+        if not youtube_service.validate_youtube_url(request.url):
+            raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+        
+        # Get video info
+        info = youtube_service.get_video_info(request.url)
+        
+        # Create video record with 'downloading' status
+        video = Video(
+            title=info['title'],
+            filename=f"youtube_{info['video_id']}.mp4",  # Will be updated after download
+            file_path="",  # Will be updated after download
+            file_size=0,  # Will be updated after download
+            duration=info.get('duration'),
+            youtube_url=request.url,
+            status="downloading"
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+        
+        # Start background download and processing
+        background_tasks.add_task(download_and_process_youtube, video.id, request.url, db)
+        
+        return {
+            "message": "YouTube download started",
+            "video_id": video.id,
+            "title": info['title'],
+            "status": "downloading"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Download initiation failed: {str(e)}")
+
+def download_and_process_youtube(video_id: int, url: str, db: Session):
+    """Background task to download and process YouTube video"""
+    try:
+        print(f"Starting YouTube download for video {video_id}: {url}")
+        
+        # Get video record
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if not video:
+            print(f"Video {video_id} not found")
+            return
+        
+        # Update status
+        video.status = "downloading"
+        db.commit()
+        
+        # Download the video
+        download_result = youtube_service.download_video(url)
+        
+        # Move file to permanent location (same as regular uploads)
+        upload_dir = os.getenv("UPLOAD_FOLDER", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        # Generate unique filename for permanent storage
+        import uuid
+        file_extension = os.path.splitext(download_result['filename'])[1]
+        permanent_filename = f"{uuid.uuid4()}{file_extension}"
+        permanent_path = os.path.join(upload_dir, permanent_filename)
+        
+        # Move file
+        import shutil
+        shutil.move(download_result['file_path'], permanent_path)
+        
+        # Update video record
+        video.filename = permanent_filename
+        video.file_path = os.path.abspath(permanent_path)
+        video.file_size = download_result['file_size']
+        video.status = "uploaded"  # Ready for processing
+        db.commit()
+        
+        print(f"YouTube download completed for video {video_id}")
+        
+        # Auto-start processing
+        from app.services import video_processor
+        video.status = "processing"
+        db.commit()
+        
+        result = video_processor.process_video(video_id, db)
+        print(f"YouTube video {video_id} processed successfully: {result}")
+        
+    except Exception as e:
+        print(f"YouTube download/processing failed for video {video_id}: {e}")
+        
+        # Update video status on error
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if video:
+            video.status = "failed"
+            db.commit()
+        
+        # Clean up any partial files
+        youtube_service.cleanup_temp_files()
+
+# Add this cleanup endpoint as well
+@app.post("/api/youtube/cleanup")
+async def cleanup_youtube_temp():
+    """Clean up temporary YouTube files"""
+    try:
+        youtube_service.cleanup_temp_files()
+        return {"message": "Cleanup completed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+# Update the existing process_video_task function to handle YouTube videos
+def process_video_task(video_id: int, db: Session):
+    """Background task for video processing (updated to handle YouTube videos)"""
+    try:
+        # Check if this is a YouTube video
+        video = db.query(Video).filter(Video.id == video_id).first()
+        if video and video.youtube_url:
+            print(f"Processing YouTube video {video_id}: {video.youtube_url}")
+        
+        result = video_processor.process_video(video_id, db)
+        print(f"Video {video_id} processed successfully: {result}")
+    except Exception as e:
+        print(f"Video {video_id} processing failed: {e}")

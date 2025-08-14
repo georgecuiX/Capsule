@@ -376,13 +376,3 @@ docs/build/
 *.production.env
 docker-compose.prod.yml
 docker-compose.production.yml
-
-# ===================
-# Future Additions
-# ===================
-
-# Placeholder for future additions:
-# - Cloud storage credentials
-# - SSL certificates
-# - Monitoring configs
-# - Performance profiles

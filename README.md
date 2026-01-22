@@ -14,6 +14,8 @@
   <p><em>A full-stack AI-powered video analysis platform that transforms uploaded files and YouTube videos into searchable, actionable insights</em></p>
 </div>
 
+https://github.com/user-attachments/assets/3c708177-3a90-4d11-8923-616a9f88d504
+
 ## 🌟 Overview
 
 Capsule is an intelligent video content management system that combines cutting-edge AI technology with modern web development to revolutionize how you interact with video content. Whether you're processing educational materials, business presentations, or entertainment content, Capsule automatically transcribes, summarizes, and extracts key insights from both uploaded files and YouTube videos.

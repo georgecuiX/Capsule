@@ -93,35 +93,39 @@ class YouTubeService:
         try:
             print(f"Getting video info for: {url}")
             
-            # Use lighter options for info extraction
             with yt_dlp.YoutubeDL(self.info_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 
-                # Check if we actually got video formats (not just images)
-                formats = info.get('formats', [])
-                video_formats = [f for f in formats if f.get('vcodec') != 'none' and f.get('acodec') != 'none']
+                # Debug logging
+                print(f"Raw duration from yt-dlp: {info.get('duration')} (type: {type(info.get('duration'))})")
+                print(f"Raw filesize_approx: {info.get('filesize_approx')} (type: {type(info.get('filesize_approx'))})")
                 
-                if not video_formats:
-                    # Try to get basic info anyway
-                    print("Warning: No video formats found, but got basic info")
+                duration = info.get('duration', 0)
+                filesize_approx = info.get('filesize_approx', 0)
+                
+                # More debug info
+                print(f"Processed duration: {duration}, filesize: {filesize_approx}")
                 
                 result = {
                     'title': info.get('title', 'Unknown Title'),
-                    'duration': info.get('duration', 0),
+                    'duration': duration,
                     'description': info.get('description', ''),
                     'uploader': info.get('uploader', 'Unknown'),
                     'upload_date': info.get('upload_date', ''),
                     'view_count': info.get('view_count', 0),
                     'video_id': info.get('id', ''),
                     'thumbnail': info.get('thumbnail', ''),
-                    'filesize_approx': info.get('filesize_approx', 0),
-                    'has_video': len(video_formats) > 0,
+                    'filesize_approx': filesize_approx,
+                    'has_video': True,
                 }
-                print(f"Video info retrieved: {result['title']} ({result['duration']}s) - Video available: {result['has_video']}")
+                
+                print(f"Final result: {result}")
                 return result
                 
         except Exception as e:
             print(f"Error getting video info: {e}")
+            import traceback
+            traceback.print_exc()
             raise Exception(f"Failed to get video info: {str(e)}")
     
     def download_video(self, url: str) -> Dict:

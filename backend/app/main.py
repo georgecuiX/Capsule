@@ -40,6 +40,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# YouTube service import with error handling
+try:
+    from app.youtube_service import youtube_service, YT_DLP_AVAILABLE
+    YOUTUBE_AVAILABLE = YT_DLP_AVAILABLE  # Use the variable from youtube_service
+except ImportError as e:
+    print(f"YouTube service not available: {e}")
+    YOUTUBE_AVAILABLE = False
+    class DummyYouTubeService:
+        def validate_youtube_url(self, url): return False
+        def get_video_info(self, url): raise Exception("YouTube not available")
+        def download_video(self, url): raise Exception("YouTube not available")
+        def cleanup_temp_files(self, video_id=None): pass
+    youtube_service = DummyYouTubeService()
+
 # Health check endpoint
 @app.get("/")
 def read_root():
@@ -375,46 +389,57 @@ def search_videos(q: str, db: Session = Depends(get_db)):
 @app.post("/api/youtube/validate")
 async def validate_youtube_url(request: YouTubeURLRequest):
     """Validate and get info for a YouTube URL"""
+    if not YOUTUBE_AVAILABLE:
+        raise HTTPException(
+            status_code=503, 
+            detail="YouTube functionality not available. Please install yt-dlp: pip install yt-dlp"
+        )
+    
     try:
+        print(f"Validating URL: {request.url}")
+        
         # Validate URL format
         if not youtube_service.validate_youtube_url(request.url):
             raise HTTPException(status_code=400, detail="Invalid YouTube URL")
         
         # Get video information
         info = youtube_service.get_video_info(request.url)
+        print(f"Got info: {info}")
         
         # Check duration limit
-        max_duration = int(os.getenv("MAX_YOUTUBE_DURATION", "1800"))  # 30 minutes
-        if info['duration'] and info['duration'] > max_duration:
+        max_duration = int(os.getenv("MAX_YOUTUBE_DURATION", "1800"))
+        video_duration = info['duration']
+        
+        print(f"Comparing duration: {video_duration} > {max_duration} = {video_duration > max_duration}")
+        
+        if video_duration and video_duration > max_duration:
             raise HTTPException(
                 status_code=400, 
                 detail=f"Video too long. Maximum duration: {max_duration//60} minutes"
             )
         
-        # Estimate file size warning
         approx_size = info.get('filesize_approx', 0)
-        max_size = int(os.getenv("MAX_YOUTUBE_SIZE", "500")) * 1024 * 1024  # 500MB
         
         return {
             "valid": True,
             "info": {
                 "title": info['title'],
-                "duration": info['duration'],
+                "duration": video_duration,
                 "uploader": info['uploader'],
                 "view_count": info.get('view_count', 0),
                 "thumbnail": info.get('thumbnail', ''),
                 "estimated_size": approx_size,
                 "estimated_size_mb": round(approx_size / (1024 * 1024), 1) if approx_size else "Unknown"
             },
-            "warnings": [
-                f"Estimated size: ~{round(approx_size / (1024 * 1024), 1)}MB" if approx_size else "Size unknown",
-                f"Duration: {info['duration']//60}:{info['duration']%60:02d}" if info['duration'] else "Duration unknown"
-            ] + ([f"Large file warning: Estimated size may exceed {max_size//(1024*1024)}MB limit"] if approx_size > max_size else [])
+            "warnings": []
         }
         
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Validation error: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Failed to validate URL: {str(e)}")
 
 @app.post("/api/youtube/download")
